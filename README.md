@@ -1,4 +1,4 @@
-# Work In Progress1
+# Work In Progress
 
 # CT-image-segmentation
 
