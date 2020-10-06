@@ -45,6 +45,9 @@ class Volume(object):
 
         return grid.numpy()
 
+    def __repr__(self):
+        return f"Volume(path={self.path})"
+
 
 class Patient(object):
     def __init__(self, patient_dir: str):
@@ -106,6 +109,9 @@ class Patient(object):
             meta_data["structures"][structure_path.stem] = structure_path.as_posix()
 
         return meta_data
+
+    def __repr__(self):
+        return f"Patient(patient_dir={self.patient_dir})"
 
 
 def load_nrrd_as_tensor(path: str) -> torch.Tensor:

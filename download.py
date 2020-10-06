@@ -27,7 +27,7 @@ from pathlib import Path
 from torchvision.datasets.utils import download_and_extract_archive
 
 
-def prepare_miccai(root_dir=None, download=True):
+def prepare_miccai(root_dir: str = None, download: bool = True):
     """MICCAI 2015 Head and Neck Segmentation Dataset
 
     Downloads the dataset and performs the split into train, validation, and test

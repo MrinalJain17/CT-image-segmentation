@@ -9,4 +9,5 @@ Segmentation in Head and Neck CT images
 3. Torchvision (>=0.7)
 4. PyTorch-Lightning (>=0.9)
 5. Tensorboard (>=2.2)
-6. Tqdm
+6. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format 
+7. Tqdm
