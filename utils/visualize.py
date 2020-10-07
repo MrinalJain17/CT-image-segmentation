@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib.widgets import Slider
 
 
-def CT_viewer(volume: np.ndarray, figsize: tuple(int, int) = (9, 6)) -> None:
+def CT_viewer(volume: np.ndarray, figsize=(9, 6)) -> None:
     if (volume.shape[0] == 1) and (volume.ndim == 4):
         volume = volume[0]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
