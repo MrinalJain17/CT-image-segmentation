@@ -1,6 +1,6 @@
-# Work In Progress
-
 # CT-image-segmentation
+
+## :warning: Work In Progress :warning:
 
 Segmentation in Head and Neck CT images
 
@@ -11,5 +11,5 @@ Segmentation in Head and Neck CT images
 3. Torchvision (>=0.7)
 4. PyTorch-Lightning (>=0.9)
 5. Tensorboard (>=2.2)
-6. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format 
+6. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
 7. Tqdm
