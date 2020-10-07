@@ -1,3 +1,4 @@
+import functools
 from pathlib import Path
 
 import nrrd
@@ -6,6 +7,18 @@ import torch
 from torchvision.utils import make_grid
 
 from .utils import AttrDict
+
+STRUCTURES = [
+    "BrainStem",
+    "Chiasm",
+    "Mandible",
+    "OpticNerve_L",
+    "OpticNerve_R",
+    "Parotid_L",
+    "Parotid_R",
+    "Submandibular_L",
+    "Submandibular_R",
+]
 
 
 class Volume(object):
@@ -66,6 +79,10 @@ class Patient(object):
     def structures(self) -> AttrDict:
         return self._structures
 
+    @property
+    def num_slides(self) -> int:
+        return self.image.data.shape[1]
+
     # @property
     # def landmarks(self):
     #     return self._landmarks
@@ -84,20 +101,25 @@ class Patient(object):
 
         return temp
 
+    def combine_structures(self, structure_list: list) -> np.ndarray:
+        assert len(structure_list) > 1, "A minimum of 2 structures are required"
+        structure_arrays = []
+
+        for structure in structure_list:
+            assert structure in STRUCTURES, f"Invalid structure argument: {structure}"
+            structure_volume = self.structures[structure]
+            if structure_volume is not None:
+                structure_arrays.append(structure_volume.as_numpy())
+
+        combined = functools.reduce(np.logical_or, structure_arrays).astype(
+            "uint8"
+        )  # Shape: (C, D, H, W)
+        return combined
+
     def get_meta_data(self) -> dict:
         meta_data = {
             "image": None,
-            "structures": {
-                "BrainStem": None,
-                "Chiasm": None,
-                "Mandible": None,
-                "OpticNerve_L": None,
-                "OpticNerve_R": None,
-                "Parotid_L": None,
-                "Parotid_R": None,
-                "Submandibular_L": None,
-                "Submandibular_R": None,
-            },
+            "structures": {s: None for s in STRUCTURES},
             "landmarks": None,
         }
         directory = Path(self.patient_dir)

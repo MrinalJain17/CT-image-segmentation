@@ -1,8 +1,8 @@
 # CT-image-segmentation
 
-## :warning: Work In Progress :warning:
-
 Segmentation in Head and Neck CT images
+
+:warning: Work In Progress :warning:
 
 ## Requirements
 
