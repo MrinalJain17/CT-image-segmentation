@@ -1,5 +1,6 @@
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+import seaborn as sns
 from ipywidgets import fixed, interact
 
 from .miccai import STRUCTURES, Patient
@@ -31,6 +32,30 @@ def plot_slide(patient: Patient, index=0, region=None):
         axes[0].imshow(region_array[0][index], alpha=0.5)
 
     return axes
+
+
+def plot_region_distribution(patient: Patient, exclude=None, ax=None):
+    voxel_dict = {}
+    if exclude is None:
+        exclude = []
+    elif isinstance(exclude, str):
+        exclude = [exclude]
+
+    for structure in STRUCTURES:
+        if structure not in exclude:
+            region_volume = patient.structures[structure]
+            if region_volume is not None:
+                voxel_dict[structure] = patient.image.as_numpy()[
+                    region_volume.as_numpy() == 1
+                ]
+
+    ax = sns.boxplot(
+        data=list(voxel_dict.values()), showmeans=True, showfliers=False, ax=ax
+    )
+    ax.set_xticklabels(voxel_dict.keys(), rotation=45)
+    ax.set_ylabel("Hounsfield Units (HU)")
+
+    return ax
 
 
 def notebook_interact(patient: Patient):

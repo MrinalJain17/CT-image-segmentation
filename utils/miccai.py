@@ -68,8 +68,8 @@ class Patient(object):
         self.meta_data = self.get_meta_data()
 
         self._image = Volume(self.meta_data["image"])
-        # self._landmarks = None
         self._structures = self.load_structures()
+        self._landmarks = None
 
     @property
     def image(self) -> Volume:
@@ -83,9 +83,9 @@ class Patient(object):
     def num_slides(self) -> int:
         return self.image.data.shape[1]
 
-    # @property
-    # def landmarks(self):
-    #     return self._landmarks
+    @property
+    def landmarks(self):
+        return self._landmarks
 
     @property
     def patient_dir(self) -> str:
@@ -102,6 +102,11 @@ class Patient(object):
         return temp
 
     def combine_structures(self, structure_list: list) -> np.ndarray:
+        """
+        This is used as a workaround for overlaying multiple segmentation masks
+        (each corresponding to different region) over a slide. The "correct" way
+        can be quite complicated, and is not worth the time for now.
+        """
         assert len(structure_list) > 1, "A minimum of 2 structures are required"
         structure_arrays = []
 
