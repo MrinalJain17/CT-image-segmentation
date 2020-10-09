@@ -27,7 +27,7 @@ def plot_slide(patient: Patient, index=0, region=None):
             region_array = patient.structures[region[0]].as_numpy()
         else:
             # More than one region requested --> combine
-            region_array = patient.combine_structures(structure_list=region)
+            region_array = patient.combine_segmentation_masks(structure_list=region)
 
         axes[0].imshow(region_array[0][index], alpha=0.5)
 

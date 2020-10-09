@@ -3,6 +3,7 @@ from pathlib import Path
 
 import nrrd
 import numpy as np
+import pandas as pd
 import torch
 from torchvision.utils import make_grid
 
@@ -20,11 +21,31 @@ STRUCTURES = [
     "Submandibular_R",
 ]
 
+LANDMARK_COLS = [
+    "id",
+    "x",
+    "y",
+    "z",
+    "ow",
+    "ox",
+    "oy",
+    "oz",
+    "vis",
+    "sel",
+    "lock",
+    "label",
+    "desc",
+    "associatedNodeID",
+]
+
 
 class Volume(object):
     def __init__(self, path: str):
         self._path = path
-        self._data = load_nrrd_as_tensor(path)
+        self._data, self._headers = load_nrrd_as_tensor(path)
+
+    def __repr__(self):
+        return f"Volume(path={self.path})"
 
     @property
     def data(self) -> torch.Tensor:
@@ -37,6 +58,10 @@ class Volume(object):
     @property
     def is_gray(self) -> bool:
         return True if self.data.shape[0] == 1 else False
+
+    @property
+    def headers(self) -> dict:
+        return self._headers
 
     def as_numpy(self, reverse_dims: bool = False) -> np.ndarray:
         arr = self.data.numpy()
@@ -58,18 +83,20 @@ class Volume(object):
 
         return grid.numpy()
 
-    def __repr__(self):
-        return f"Volume(path={self.path})"
-
 
 class Patient(object):
     def __init__(self, patient_dir: str):
         self._patient_dir = patient_dir
-        self.meta_data = self.get_meta_data()
+        self.meta_data = self._store_meta_data()
 
         self._image = Volume(self.meta_data["image"])
-        self._structures = self.load_structures()
-        self._landmarks = None
+        self._structures = self._load_structures()
+        self._landmarks = pd.read_csv(
+            self.meta_data["landmarks"], comment="#", names=LANDMARK_COLS
+        )  # TODO: Figure out how landmarks help
+
+    def __repr__(self):
+        return f"Patient(patient_dir={self.patient_dir})"
 
     @property
     def image(self) -> Volume:
@@ -84,14 +111,30 @@ class Patient(object):
         return self.image.data.shape[1]
 
     @property
-    def landmarks(self):
+    def landmarks(self) -> pd.DataFrame:
         return self._landmarks
 
     @property
     def patient_dir(self) -> str:
         return self._patient_dir
 
-    def load_structures(self) -> AttrDict:
+    def _store_meta_data(self) -> dict:
+        meta_data = {
+            "image": None,
+            "structures": {s: None for s in STRUCTURES},
+            "landmarks": None,
+        }
+        directory = Path(self.patient_dir)
+
+        meta_data["image"] = (directory / "img.nrrd").as_posix()
+        meta_data["landmarks"] = (list(directory.glob("*.fcsv"))[0]).as_posix()
+
+        for structure_path in (directory / "structures").iterdir():
+            meta_data["structures"][structure_path.stem] = structure_path.as_posix()
+
+        return meta_data
+
+    def _load_structures(self) -> AttrDict:
         temp = AttrDict()
         for (structure, path) in self.meta_data["structures"].items():
             if path is not None:
@@ -101,7 +144,7 @@ class Patient(object):
 
         return temp
 
-    def combine_structures(self, structure_list: list) -> np.ndarray:
+    def combine_segmentation_masks(self, structure_list: list) -> np.ndarray:
         """
         This is used as a workaround for overlaying multiple segmentation masks
         (each corresponding to different region) over a slide. The "correct" way
@@ -121,30 +164,15 @@ class Patient(object):
         )  # Shape: (C, D, H, W)
         return combined
 
-    def get_meta_data(self) -> dict:
-        meta_data = {
-            "image": None,
-            "structures": {s: None for s in STRUCTURES},
-            "landmarks": None,
-        }
-        directory = Path(self.patient_dir)
-
-        meta_data["image"] = (directory / "img.nrrd").as_posix()
-        meta_data["landmarks"] = (list(directory.glob("*.fcsv"))[0]).as_posix()
-
-        for structure_path in (directory / "structures").iterdir():
-            meta_data["structures"][structure_path.stem] = structure_path.as_posix()
-
-        return meta_data
-
-    def __repr__(self):
-        return f"Patient(patient_dir={self.patient_dir})"
-
 
 def load_nrrd_as_tensor(path: str) -> torch.Tensor:
-    img, _ = nrrd.read(path)
+    """
+    Headers are returned without any changes. Should be kept in mind if used with the
+    tensors, making sure that they both align.
+    """
+    img, headers = nrrd.read(path)
     if img.ndim == 3:  # grayscale, so adding channel=1
         img = img[:, :, :, np.newaxis]  # Shape: (H, W, D, C)
     tensor = torch.from_numpy(np.transpose(img, (3, 2, 0, 1)))  # Shape: (C, D, H, W)
 
-    return tensor
+    return (tensor, headers)
