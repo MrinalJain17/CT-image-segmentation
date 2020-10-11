@@ -10,7 +10,7 @@ Currently available datasets
    (http://www.imagenglab.com/wiki/mediawiki/index.php?title=2015_MICCAI_Challenge)
 
     Running the following command will place the contents in the folder
-    "data/miccai" in the current working directory (default behaviour):
+    "miccai" in the same directory as this python file (default behaviour):
 
         python download.py miccai
 
@@ -27,7 +27,7 @@ from pathlib import Path
 from torchvision.datasets.utils import download_and_extract_archive
 
 
-def prepare_miccai(root_dir: str = None, download: bool = True):
+def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
     """MICCAI 2015 Head and Neck Segmentation Dataset
 
     Downloads the dataset and performs the split into train, validation, and test
@@ -39,7 +39,7 @@ def prepare_miccai(root_dir: str = None, download: bool = True):
         "part-3": "http://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part3.zip",
     }
 
-    path = "./data/miccai" if root_dir is None else root_dir
+    path = "./miccai" if root_dir is None else root_dir
 
     if download:
         for (_, url) in urls.items():
