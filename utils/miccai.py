@@ -1,5 +1,6 @@
 import functools
 from pathlib import Path
+from typing import Union
 
 import nrrd
 import numpy as np
@@ -40,9 +41,15 @@ LANDMARK_COLS = [
 
 
 class Volume(object):
-    def __init__(self, path: str):
-        self._path = path
-        self._data, self._headers = load_nrrd_as_tensor(path)
+    def __init__(self, path: str = None, data: Union[np.ndarray, torch.Tensor] = None):
+        if path is not None:
+            self._path = path
+            self._data, self._headers = load_nrrd_as_tensor(path)
+        else:
+            assert data is not None, "Either one of path or data (array) is required"
+            self._path = self._headers = None
+            self._data = self._check_data(data)
+        self._is_data_modified = False
 
     def __repr__(self):
         return f"Volume(path={self.path})"
@@ -51,8 +58,14 @@ class Volume(object):
     def data(self) -> torch.Tensor:
         return self._data
 
+    @data.setter
+    def data(self, arr) -> None:
+        arr = self._check_data(arr)
+        self._data = arr
+        self._is_data_modified = True
+
     @property
-    def path(self) -> str:
+    def path(self) -> Union[str, None]:
         return self._path
 
     @property
@@ -60,8 +73,21 @@ class Volume(object):
         return True if self.data.shape[0] == 1 else False
 
     @property
-    def headers(self) -> dict:
-        return self._headers
+    def spacing(self) -> Union[np.ndarray, None]:
+        if self.headers is not None:
+            # Reversed the array to align with channel first format
+            # That is, spacing values in dimension: (z, ..., ...)
+            return self.headers["space directions"].diagonal()[::-1]
+        return None
+
+    def _check_data(self, data: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        """Only meant to be used internally."""
+        assert len(data.shape) == 4, "Expected data to be of shape: (C, D, H, W)"
+        assert data.shape[0] == 1, "Expected data to be in channel first format"
+        if isinstance(data, np.ndarray):
+            data = torch.from_numpy(data)
+
+        return data
 
     def as_numpy(self, reverse_dims: bool = False) -> np.ndarray:
         arr = self.data.numpy()

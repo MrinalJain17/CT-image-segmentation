@@ -7,7 +7,7 @@ from ipywidgets import fixed, interact
 from .miccai import STRUCTURES, Patient
 
 
-def plot_slide(patient: Patient, index=0, region=None):
+def plot_slide(patient: Patient, index: int = 0, region=None):
     volume = patient.image.as_numpy()[0]
     fig, axes = plt.subplots(1, 2, constrained_layout=True, figsize=(12, 10))
     axes[0].imshow(volume[index], cmap=plt.cm.bone)
@@ -111,7 +111,9 @@ def plot_windowed(patient: Patient, index: int = 0):
     return axes
 
 
-def _window_volume(patient, window_width, window_level):
+def _window_volume(
+    patient: Patient, window_width: int, window_level: int
+) -> np.ndarray:
     """
     Function to apply a windowing operation. This implemetation is intended to be
     used for visualization only.
