@@ -1,12 +1,13 @@
 import functools
 from pathlib import Path
-from typing import Union
+from typing import Callable, Tuple, Union
 
 import nrrd
 import numpy as np
 import pandas as pd
 import torch
 from torchvision.utils import make_grid
+from tqdm import tqdm
 
 from .utils import AttrDict
 
@@ -59,7 +60,7 @@ class Volume(object):
         return self._data
 
     @data.setter
-    def data(self, arr) -> None:
+    def data(self, arr: Union[np.ndarray, torch.Tensor]) -> None:
         arr = self._check_data(arr)
         self._data = arr
         self._is_data_modified = True
@@ -89,6 +90,18 @@ class Volume(object):
 
         return data
 
+    def _crop_data(
+        self, min_z: int, max_z: int, min_x: int, max_x: int, min_y: int, max_y: int
+    ) -> None:
+        """
+        Only intended to be used internally. This function performs no checks,
+        and updates the data according to the given crop information (and holds
+        no reference to the 'old' data).
+
+        All coordinates are expected to be integers.
+        """
+        self.data = self.data[:, min_z:max_z, min_x:max_x, min_y:max_y]
+
     def as_numpy(self, reverse_dims: bool = False) -> np.ndarray:
         arr = self.data.numpy()
         if reverse_dims:
@@ -117,9 +130,13 @@ class Patient(object):
 
         self._image = Volume(self.meta_data["image"])
         self._structures = self._load_structures()
-        self._landmarks = pd.read_csv(
-            self.meta_data["landmarks"], comment="#", names=LANDMARK_COLS
-        )  # TODO: Figure out how landmarks help
+        if self.meta_data["landmarks"] is not None:
+            self._landmarks = pd.read_csv(
+                self.meta_data["landmarks"], comment="#", names=LANDMARK_COLS
+            )
+        else:  # No landmarks for test data
+            self._landmarks = None
+        self._is_cropped = False
 
     def __repr__(self):
         return f"Patient(patient_dir={self.patient_dir})"
@@ -137,7 +154,7 @@ class Patient(object):
         return self.image.data.shape[1]
 
     @property
-    def landmarks(self) -> pd.DataFrame:
+    def landmarks(self) -> Union[pd.DataFrame, None]:
         return self._landmarks
 
     @property
@@ -153,7 +170,10 @@ class Patient(object):
         directory = Path(self.patient_dir)
 
         meta_data["image"] = (directory / "img.nrrd").as_posix()
-        meta_data["landmarks"] = (list(directory.glob("*.fcsv"))[0]).as_posix()
+        try:
+            meta_data["landmarks"] = (list(directory.glob("*.fcsv"))[0]).as_posix()
+        except IndexError:  # No landmarks for test data
+            meta_data["landmarks"] = None
 
         for structure_path in (directory / "structures").iterdir():
             meta_data["structures"][structure_path.stem] = structure_path.as_posix()
@@ -169,6 +189,42 @@ class Patient(object):
                 temp[structure] = None
 
         return temp
+
+    def crop_data(
+        self,
+        boundary_x: Tuple[int, int] = (120, 400),
+        boundary_y: Tuple[int, int] = (55, 335),
+        boundary_z: Tuple[float, float] = (0.32, 0.99),
+    ):
+        assert np.all(
+            [isinstance(i, tuple) for i in (boundary_x, boundary_y, boundary_z)]
+        ), "Cropping boundary is expected to be a tuple for each axis"
+
+        min_x, max_x = boundary_x
+        min_y, max_y = boundary_y
+        min_z, max_z = boundary_z
+
+        min_z = np.math.ceil(min_z * self.num_slides)
+        max_z = np.math.ceil(max_z * self.num_slides)
+
+        assert np.all(
+            [isinstance(i, int) for i in (min_z, max_z, min_x, max_x, min_y, max_y)]
+        ), (
+            "'x' and 'y' coordinates are expected to be integers, and 'z' "
+            "should be float between 0 and 1"
+        )
+        assert min_x < max_x, "Invalid x-axis boundaries"
+        assert min_y < max_y, "Invalid y-axis boundaries"
+        assert min_z < max_z, "Invalid z-axis boundaries"
+
+        self.image._crop_data(min_z, max_z, min_x, max_x, min_y, max_y)
+        for structure in STRUCTURES:
+            if self.structures[structure] is not None:
+                self.structures[structure]._crop_data(
+                    min_z, max_z, min_x, max_x, min_y, max_y
+                )
+
+        self._is_cropped = True
 
     def combine_segmentation_masks(self, structure_list: list) -> np.ndarray:
         """
@@ -189,6 +245,42 @@ class Patient(object):
             "uint8"
         )  # Shape: (C, D, H, W)
         return combined
+
+
+class PatientCollection(object):
+    def __init__(self, path: str):
+        self._path = path
+        self._patient_paths = {
+            directory.name: directory.as_posix()
+            for directory in Path(path).glob("0522c*")
+        }
+        assert (
+            len(self._patient_paths) > 0
+        ), "No patients found at the specified location: {path}"
+
+    @property
+    def patient_paths(self) -> dict:
+        return self._patient_paths
+
+    def apply_function(
+        self, func: Callable, disable_progress: bool = False, **kwargs
+    ) -> dict:
+        """
+        Applies the callable to each patient, and stores the result in a dictionary.
+        Any extra keyword arguments will be passed to the callable.
+
+        The callable should be of the following form:
+
+        def func(patient: Patient, **kwargs):
+            ...
+        """
+        iterator = tqdm(self.patient_paths.items(), disable=disable_progress)
+
+        collected_results = {
+            name: func(Patient(path), **kwargs) for (name, path) in iterator
+        }
+
+        return collected_results
 
 
 def load_nrrd_as_tensor(path: str) -> torch.Tensor:

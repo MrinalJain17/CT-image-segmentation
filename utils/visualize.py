@@ -25,7 +25,11 @@ def plot_slide(patient: Patient, index: int = 0, region=None):
             region = [region]
 
         if len(region) == 1:
-            region_array = patient.structures[region[0]].as_numpy()
+            region_array = patient.structures[region[0]]
+            if region_array is not None:
+                region_array = region_array.as_numpy()
+            else:
+                region_array = np.expand_dims(np.zeros_like(volume), 0)
         else:
             # More than one region requested --> combine
             region_array = patient.combine_segmentation_masks(structure_list=region)
