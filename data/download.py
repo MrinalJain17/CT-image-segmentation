@@ -24,7 +24,10 @@ import shutil
 from argparse import ArgumentParser
 from pathlib import Path
 
+import numpy as np
 from torchvision.datasets.utils import download_and_extract_archive
+
+SEED = 42
 
 
 def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
@@ -56,11 +59,19 @@ def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
         f"given path: {path.absolute()}"
     )
 
-    # Splitting patient directories into train, test and validation sets as
+    rng = np.random.default_rng(seed=SEED)
+
+    # Splitting patient directories into train and test sets as
     # described in http://www.imagenglab.com/newsite/pddca/
-    train = range(1, 329)
-    valid = range(329, 480)
     test = range(555, 879)
+    train = [
+        int(directory.name[-4:])
+        for directory in patients
+        if int(directory.name[-4:]) in range(1, 480)
+    ]
+    rng.shuffle(train)
+    valid = train[:8]
+    train = train[8:]
 
     for patient in patients:
         num = int(patient.name[5:])

@@ -20,7 +20,7 @@ Executing the following code at the root of repository will download, extract, a
 1. Python (>=3.7)
 2. PyTorch (>=1.6)
 3. Torchvision (>=0.7)
-4. PyTorch-Lightning
+4. PyTorch-Lightning (>=1.0.0)
 5. Tensorboard
 6. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
-7. Tqdm
+7. Tqdm - For displaying progress bars
