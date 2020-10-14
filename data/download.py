@@ -52,6 +52,7 @@ def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
 
     path = Path(path)
     patients = [directory for directory in path.glob("0522c*")]
+    patients.sort()  # To get same splitting on Windows and Linux (cluster)
 
     # Dataset consists CT scans of 48 patients
     assert len(patients) == 48, (
