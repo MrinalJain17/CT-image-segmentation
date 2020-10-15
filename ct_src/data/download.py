@@ -10,7 +10,7 @@ Currently available datasets
    (http://www.imagenglab.com/wiki/mediawiki/index.php?title=2015_MICCAI_Challenge)
 
     Running the following command will place the contents in the folder
-    "miccai" in the same directory as this python file (default behaviour):
+    "storage/miccai" in the root of this repository (default behaviour):
 
         python download.py miccai
 
@@ -42,7 +42,7 @@ def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
         "part-3": "http://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part3.zip",
     }
 
-    path = "./miccai" if root_dir is None else root_dir
+    path = "../../storage/miccai" if root_dir is None else root_dir
 
     if download:
         for (_, url) in urls.items():

@@ -223,7 +223,5 @@ $RECYCLE.BIN/
 
 # Custom
 
-# Ignore the datasets, but not related python files/notebooks
-data/*
-!data/*.py
-!data/*.ipynb
+# Ignore the datasets (this is where they're stored by default)
+storage/
