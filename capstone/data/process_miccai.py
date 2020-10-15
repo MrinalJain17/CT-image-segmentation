@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ct_src.utils import miccai
+from capstone.utils import miccai
 
 
 def convert_to_2d(
