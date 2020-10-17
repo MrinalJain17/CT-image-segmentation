@@ -18,12 +18,15 @@ Execute the following command from the root of the repository to install the pro
 
 ### [MICCAI 2015 Head and Neck Auto Segmentation Challenge](http://www.imagenglab.com/wiki/mediawiki/index.php?title=2015_MICCAI_Challenge)
 
-Executing the following code at the root of repository will download, extract, and split the dataset.
+Executing the following code will download, extract, and split the dataset.
 
 ```bash
     cd capstone/data
     python download.py miccai
 ```
+
+*Note that if you're on the NYU cluster (prince), then the data will be stored at the user's `$BEEGFS` directory on the cluster.*
+*Refer to the file `paths.py` for more info*
 
 ## Requirements
 

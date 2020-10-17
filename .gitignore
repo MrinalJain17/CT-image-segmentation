@@ -223,5 +223,5 @@ $RECYCLE.BIN/
 
 # Custom
 
-# Ignore the datasets (this is where they're stored by default)
+# Ignore the datasets (this is where they're stored by default - if not working on the NYU cluster)
 storage/
