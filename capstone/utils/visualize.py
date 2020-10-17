@@ -2,9 +2,8 @@ import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from capstone.utils.miccai import STRUCTURES, Patient
 from ipywidgets import fixed, interact
-
-from .miccai import STRUCTURES, Patient
 
 
 def plot_slide(patient: Patient, index: int = 0, region=None):

@@ -25,12 +25,13 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 import numpy as np
+from capstone.paths import DEFAULT_DATA_STORAGE
 from torchvision.datasets.utils import download_and_extract_archive
 
 SEED = 42
 
 
-def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
+def prepare_miccai(root_dir: str, download: bool = True) -> None:
     """MICCAI 2015 Head and Neck Segmentation Dataset
 
     Downloads the dataset and performs the split into train, validation, and test
@@ -42,7 +43,7 @@ def prepare_miccai(root_dir: str = None, download: bool = True) -> None:
         "part-3": "http://www.imagenglab.com/data/pddca/PDDCA-1.4.1_part3.zip",
     }
 
-    path = "../../storage/miccai" if root_dir is None else root_dir
+    path = root_dir
 
     if download:
         for (_, url) in urls.items():
@@ -111,4 +112,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == "miccai":
+        if args.root_dir is None:
+            args.root_dir = (Path(DEFAULT_DATA_STORAGE) / "miccai").as_posix()
         prepare_miccai(args.root_dir, not args.no_download)

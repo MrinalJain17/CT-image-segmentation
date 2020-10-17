@@ -2,15 +2,12 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 import numpy as np
-
+from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
 
 
 def convert_to_2d(
-    read_dir: str = "../../storage/miccai",
-    save_dir: str = "../../storage/miccai_2d",
-    split: str = None,
-    crop: bool = True,
+    read_dir: str, save_dir: str, split: str = None, crop: bool = True,
 ) -> None:
     """TODO
 
@@ -82,13 +79,13 @@ if __name__ == "__main__":
     convert_2d_parser.add_argument(
         "--root_dir",
         type=str,
-        default="../../storage/miccai",
+        default=None,
         help="Root directory where the train, valid and test splits of MICCAI reside",
     )
     convert_2d_parser.add_argument(
         "--save_dir",
         type=str,
-        default="../../storage/miccai_2d",
+        default=None,
         help="Directory where the converted train, valid and test splits will be saved",
     )
     convert_2d_parser.add_argument(
@@ -101,6 +98,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == "convert_2d":
+        if args.root_dir is None:
+            args.root_dir = (Path(DEFAULT_DATA_STORAGE) / "miccai").as_posix()
+        if args.save_dir is None:
+            args.save_dir = (Path(DEFAULT_DATA_STORAGE) / "miccai_2d").as_posix()
+
         convert_to_2d(args.root_dir, args.save_dir, "train", not args.no_crop)
         convert_to_2d(args.root_dir, args.save_dir, "valid", not args.no_crop)
         convert_to_2d(args.root_dir, args.save_dir, "test", not args.no_crop)
