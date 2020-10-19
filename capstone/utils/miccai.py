@@ -1,6 +1,6 @@
 import functools
 from pathlib import Path
-from typing import Callable, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import nrrd
 import numpy as np
@@ -10,7 +10,8 @@ from capstone.utils.utils import AttrDict
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
-STRUCTURES = [
+# Other parts of the code depend on the order of structures in this list
+STRUCTURES: List[str] = [
     "BrainStem",
     "Chiasm",
     "Mandible",
@@ -22,7 +23,7 @@ STRUCTURES = [
     "Submandibular_R",
 ]
 
-LANDMARK_COLS = [
+LANDMARK_COLS: List[str] = [
     "id",
     "x",
     "y",
@@ -160,7 +161,7 @@ class Patient(object):
     def patient_dir(self) -> str:
         return self._patient_dir
 
-    def _store_meta_data(self) -> dict:
+    def _store_meta_data(self) -> Dict:
         meta_data = {
             "image": None,
             "structures": {s: None for s in STRUCTURES},
@@ -258,12 +259,12 @@ class PatientCollection(object):
         ), "No patients found at the specified location: {path}"
 
     @property
-    def patient_paths(self) -> dict:
+    def patient_paths(self) -> Dict:
         return self._patient_paths
 
     def apply_function(
         self, func: Callable, disable_progress: bool = False, **kwargs
-    ) -> dict:
+    ) -> Dict:
         """
         Applies the callable to each patient, and stores the result in a dictionary.
         Any extra keyword arguments will be passed to the callable.
