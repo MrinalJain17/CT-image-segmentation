@@ -10,11 +10,16 @@ Currently available datasets
    (http://www.imagenglab.com/wiki/mediawiki/index.php?title=2015_MICCAI_Challenge)
 
     Running the following command will place the contents in the folder
-    "storage/miccai" in the root of this repository (default behaviour):
+    "storage/miccai" in the root of this repository (default behaviour when not
+    on NYU cluster):
 
         python download.py miccai
 
-    Or you could specify the directory explicitly:
+    However, if you're on the NYU cluster Prince, then the data will be stored
+    (in the same structure) in the user's "$BEEGFS" directory, in a folder
+    "CT-image-segmentation".
+
+    Or you could specify the directory explicitly (not recommended):
 
         python download.py miccai --root_dir ~/capstone/data
 

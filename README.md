@@ -33,7 +33,8 @@ Executing the following code will download, extract, and split the dataset.
 1. Python (>=3.7)
 2. PyTorch (>=1.6)
 3. Torchvision (>=0.7)
-4. PyTorch-Lightning (>=1.0.2)
-5. Tensorboard
-6. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
-7. Tqdm - For displaying progress bars
+4. [Albumentations](https://github.com/albumentations-team/albumentations) (>=0.4.6) - For data augmentation
+5. PyTorch-Lightning (>=1.0.2)
+6. Tensorboard
+7. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
+8. Tqdm - For displaying progress bars

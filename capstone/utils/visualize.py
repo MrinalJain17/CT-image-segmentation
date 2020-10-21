@@ -85,7 +85,7 @@ def plot_windowed(patient: Patient, index: int = 0):
         "subdural": (215, 75),
         "stroke": (8, 32),
         "temporal bones": (2800, 600),
-        "soft tissues": (375, 40),
+        "soft tissues": (350, 20),
     }  # Values taken from https://radiopaedia.org/articles/windowing-ct
 
     num_cols = 2

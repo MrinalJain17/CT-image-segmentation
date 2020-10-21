@@ -19,27 +19,16 @@ def convert_to_2d(
         save_location = save_location / split
 
     save_location.mkdir(parents=True, exist_ok=True)
-    image_location = save_location / "images"
-    image_location.mkdir(parents=True, exist_ok=True)
-    mask_location = save_location / "masks"
-    mask_location.mkdir(parents=True, exist_ok=True)
-
     read_location = read_location.as_posix()
-    patient_collection = miccai.PatientCollection(read_location)
 
+    patient_collection = miccai.PatientCollection(read_location)
     _ = patient_collection.apply_function(
-        _patient_to_2d,
-        image_location=image_location,
-        mask_location=mask_location,
-        crop=crop,
+        _patient_to_2d, save_location=save_location, crop=crop,
     )
 
 
 def _patient_to_2d(
-    patient: miccai.Patient,
-    image_location: Path,
-    mask_location: Path,
-    crop: bool = True,
+    patient: miccai.Patient, save_location: Path, crop: bool = True,
 ) -> None:
     """TODO
 
@@ -48,21 +37,33 @@ def _patient_to_2d(
     if crop:
         temp_patient.crop_data()
     patient_id = Path(temp_patient.patient_dir).stem
-
     vol = temp_patient.image.as_numpy()
-    for index in range(temp_patient.num_slides):
-        slide = vol[:, [index], :, :]
-        np.save((image_location / f"{patient_id}_{index}").as_posix(), slide)
 
-        patient_masks_location = mask_location / f"{patient_id}_{index}"
-        patient_masks_location.mkdir(parents=True, exist_ok=True)
-        for structure in miccai.STRUCTURES:
+    for index in range(temp_patient.num_slides):
+        slide = vol[:, index, :, :]  # Shape: (1, H, W)
+        region_slides = []
+        mask_indicator = np.ones(len(miccai.STRUCTURES))
+        all_zeros = np.zeros_like(
+            slide[0, :, :], dtype="uint8"
+        )  # Dummy mask. Shape: (H, W)
+
+        for i, structure in enumerate(miccai.STRUCTURES):
             region_volume = temp_patient.structures[structure]
             if region_volume is not None:
-                region_slide = region_volume.as_numpy()[:, [index], :, :]
-                np.save(
-                    (patient_masks_location / f"{structure}").as_posix(), region_slide
-                )
+                region_slide = region_volume.as_numpy()[0, index, :, :]  # Shape: (H, w)
+            else:
+                region_slide = all_zeros
+                mask_indicator[i] = 0
+            region_slides.append(region_slide)
+
+        region_slides = np.stack(
+            region_slides
+        )  # Shape: (9, H, W) -> 1 mask for each structure
+
+        filename = (save_location / f"{patient_id}_{index}.npz").as_posix()
+        np.savez(
+            filename, image=slide, masks=region_slides, mask_indicator=mask_indicator
+        )
 
 
 if __name__ == "__main__":
