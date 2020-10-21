@@ -109,6 +109,7 @@ def apply_window(
 # Function to distort image
 def elastic_transform(image, alpha, sigma, alpha_affine, random_state=None):
     """
+    TODO
     Paper called U-Net: Convolutional Networks for Biomedical
     Image Segmentation found elastic transformations to be the most crucial transformation in their segmentation task.
     
