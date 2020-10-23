@@ -1,3 +1,11 @@
+"""
+These are general pytorch datasets, and can be used to construct data loaders
+for training/validation.
+
+It's recommended to use the `get_miccai_2d()` method with appropriate parameters,
+which will automatically use the default storage location to load the data.
+"""
+
 from pathlib import Path
 from typing import Tuple
 
