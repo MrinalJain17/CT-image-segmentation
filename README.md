@@ -35,7 +35,7 @@ Executing the following code will download, extract, and split the dataset.
 3. Torchvision (>=0.7)
 4. [Albumentations](https://github.com/albumentations-team/albumentations) (>=0.5.0) - For data augmentation and transforms
 5. [MONAI](https://github.com/Project-MONAI/MONAI) (>=0.3.0) - For domain specific models, losses, metrics, etc
-6. PyTorch-Lightning (>=1.0.2)
+6. PyTorch-Lightning (>=1.0.3)
 7. Tensorboard
 8. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
 9. Tqdm - For displaying progress bars
