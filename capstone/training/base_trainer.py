@@ -46,7 +46,7 @@ class BaseUNet2D(pl.LightningModule):
         )
 
     def forward(self, x):
-        x = self.unet(x)
+        x = self(x)
         return x
 
     def training_step(self, batch, batch_idx):
@@ -82,11 +82,8 @@ class BaseUNet2D(pl.LightningModule):
 
         return images, masks, mask_indicator, prediction, loss
 
-    def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.hparams.lr)
-
     def _log_images(self, batch_mask, batch_pred, structure="Mandible"):
-        idx = miccai.STRUCTURES.index(structure)
+        idx = 0 if self._single_structure else miccai.STRUCTURES.index(structure)
         nrow = int(np.sqrt(self.hparams.batch_size))
         mask_grid = make_grid(
             batch_mask[:, [idx], :, :].cpu(), nrow=nrow, pad_value=1
@@ -104,6 +101,9 @@ class BaseUNet2D(pl.LightningModule):
         self.logger.experiment.add_figure(
             "Actual vs. Predicted Masks", fig, self.trainer.global_step
         )
+
+    def configure_optimizers(self):
+        return optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     @staticmethod
     def add_model_specific_args(parent_parser):
