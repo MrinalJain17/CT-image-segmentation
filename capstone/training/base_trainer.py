@@ -1,17 +1,17 @@
 from argparse import ArgumentParser
 from typing import Tuple
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pytorch_lightning as pl
+import torch
 import torch.optim as optim
+import wandb
 from capstone.data.data_module import MiccaiDataModule2D
 from capstone.models import LOSSES, UNet, losses
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
 from monai.metrics.meandice import DiceMetric
 from pytorch_lightning import Trainer, seed_everything
-from torchvision.utils import make_grid
+from pytorch_lightning.loggers import WandbLogger
 
 SEED = 12342
 
@@ -26,9 +26,17 @@ class BaseUNet2D(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(
+            "structure",
+            "batch_size",
+            "transform_degree",
+            "filters",
+            "use_res_units",
+            "lr",
+            "loss_fx",
+        )
         self.unet = self._construct_model()
-        self.loss_fx = LOSSES[self.hparams.loss_fx]
+        self.loss_func = LOSSES[self.hparams.loss_fx]
         self.dice_score = DiceMetric(sigmoid=True, reduction="none")
 
     @property
@@ -67,9 +75,10 @@ class BaseUNet2D(pl.LightningModule):
         self.log(f"val_{self.hparams.loss_fx}", loss, on_epoch=True)
         self.log("val_DiceScore", dice_score, on_epoch=True)
 
-        if (batch_idx + 1) % (len(self.val_dataloader()) // 4) == 0:
-            # 4 batches visualized in every epoch
-            self._log_images(masks, prediction)
+        _n_batches = 3
+        if (batch_idx + 1) % (len(self.val_dataloader()) // _n_batches) == 0:
+            # `_n_batches` batches visualized in every epoch
+            self._log_images(images, masks, prediction)
 
         return loss
 
@@ -78,29 +87,47 @@ class BaseUNet2D(pl.LightningModule):
         masks = masks.type_as(images)
         mask_indicator = mask_indicator.type_as(images)
         prediction = self.forward(images)
-        loss = self.loss_fx(masks, prediction, mask_indicator)
+        loss = self.loss_func(masks, prediction, mask_indicator)
 
         return images, masks, mask_indicator, prediction, loss
 
-    def _log_images(self, batch_mask, batch_pred, structure="Mandible"):
-        idx = 0 if self._single_structure else miccai.STRUCTURES.index(structure)
-        nrow = int(np.sqrt(self.hparams.batch_size))
-        mask_grid = make_grid(
-            batch_mask[:, [idx], :, :].cpu(), nrow=nrow, pad_value=1
-        ).permute((1, 2, 0))
-        pred_grid = make_grid(
-            batch_pred[:, [idx], :, :].cpu(), nrow=nrow, pad_value=1
-        ).permute((1, 2, 0))
+    def _log_images(self, images, batch_mask, batch_pred):
+        if not self._single_structure:
+            # Converted masks are compatible for visualization. Shape: (N, H, W)
+            convert_values = torch.arange(
+                1, len(miccai.STRUCTURES), device=self.device
+            )[None, :, None, None]
+            converted_mask = (batch_mask * convert_values).sum(dim=1)
+            converted_pred = (batch_pred * convert_values).sum(dim=1)
 
-        fig, ax = plt.subplots(1, 2, constrained_layout=True, figsize=(16, 8))
-        ax[0].imshow(mask_grid[:, :, [0]], cmap="gray")
-        ax[0].set_title(f"Actual masks ({structure})")
-        ax[1].imshow(pred_grid[:, :, [0]], cmap="gray")
-        ax[1].set_title(f"Predicted masks ({structure})")
+            class_labels = dict(
+                zip(range(1, len(miccai.STRUCTURES) + 1), miccai.STRUCTURES)
+            )
+            class_labels[0] = "Void"
+        else:
+            converted_mask = batch_mask.squeeze(dim=1)
+            converted_pred = batch_pred.squeeze(dim=1)
 
-        self.logger.experiment.add_figure(
-            "Actual vs. Predicted Masks", fig, self.trainer.global_step
-        )
+            class_labels = {0: "Void", 1: self.hparams.structure}
+
+        vis_list = []
+        for i, sample in enumerate(images):
+            wandb_obj = wandb.Image(
+                sample.permute(1, 2, 0).cpu().numpy(),
+                masks={
+                    "predictions": {
+                        "mask_data": converted_pred[i].cpu().numpy(),
+                        "class_labels": class_labels,
+                    },
+                    "ground_truth": {
+                        "mask_data": converted_mask[i].cpu().numpy(),
+                        "class_labels": class_labels,
+                    },
+                },
+            )
+            vis_list.append(wandb_obj)
+
+        self.logger.experiment.log({"sample_predictions": vis_list})
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.hparams.lr)
@@ -174,5 +201,9 @@ if __name__ == "__main__":
 
     if args.default_root_dir is None:
         args.default_root_dir = DEFAULT_DATA_STORAGE
+
+    args.logger = WandbLogger(
+        "Trial-UNet", DEFAULT_DATA_STORAGE, project="ct-image-segmentation"
+    )
 
     main(args)
