@@ -46,7 +46,7 @@ class BaseUNet2D(pl.LightningModule):
         )
 
     def forward(self, x):
-        x = self(x)
+        x = self.unet(x)
         return x
 
     def training_step(self, batch, batch_idx):
