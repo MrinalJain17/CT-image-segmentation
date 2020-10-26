@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from typing import Tuple
+from typing import List
 
 import pytorch_lightning as pl
 import torch
@@ -19,7 +19,7 @@ SEED = 12342
 class BaseUNet2D(pl.LightningModule):
     def __init__(
         self,
-        filters: Tuple = (16, 32, 64, 128, 256),
+        filters: List = [16, 32, 64, 128, 256],
         use_res_units: bool = False,
         lr: float = 1e-3,
         loss_fx: str = "BCELoss",
@@ -49,7 +49,7 @@ class BaseUNet2D(pl.LightningModule):
             in_channels=3,  # assuming transform_degree in [1, 2, 3]
             out_channels=1 if self._single_structure else len(miccai.STRUCTURES),
             channels=self.hparams.filters,
-            strides=(2, 2, 2, 2),  # Default for UNet
+            strides=[2, 2, 2, 2],  # Default for UNet
             num_res_units=(2 if self.hparams.use_res_units else 0),  # Default in MONAI,
         )
 
@@ -152,8 +152,9 @@ class BaseUNet2D(pl.LightningModule):
         )
         parser.add_argument(
             "--filters",
-            type=tuple,
-            default=(16, 32, 64, 128, 256),
+            nargs=5,
+            type=int,
+            default=[16, 32, 64, 128, 256],
             help="A sqeuence of number of filters for the downsampling path in UNet",
         )
         parser.add_argument(
