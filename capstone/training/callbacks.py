@@ -20,11 +20,15 @@ class ExamplesLoggingCallback(Callback):
             size=int(pl_module.hparams.batch_size * self.num_examples),
             replace=False,
         )
+        self.num_train_batches = len(trainer.datamodule.train_dataloader())
+        self.num_val_batches = len(trainer.datamodule.val_dataloader())
 
     def on_train_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if trainer.current_epoch % self.log_every_n_epochs == 0:
+        if (trainer.current_epoch % self.log_every_n_epochs == 0) and (
+            (batch_idx + 1) != self.num_train_batches
+        ):
             with torch.no_grad():
                 pl_module.eval()
                 sample_images, sample_masks, sample_preds = self._make_predictions(
@@ -42,7 +46,9 @@ class ExamplesLoggingCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if trainer.current_epoch % self.log_every_n_epochs == 0:
+        if (trainer.current_epoch % self.log_every_n_epochs == 0) and (
+            (batch_idx + 1) != self.num_val_batches
+        ):
             with torch.no_grad():
                 sample_images, sample_masks, sample_preds = self._make_predictions(
                     batch, pl_module
