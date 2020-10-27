@@ -194,7 +194,9 @@ if __name__ == "__main__":
 
     if args.use_wandb:
         args.logger = WandbLogger(
-            "Trial-UNet", DEFAULT_DATA_STORAGE, project="ct-image-segmentation"
+            name="UNet 2D",
+            save_dir=DEFAULT_DATA_STORAGE,
+            project="ct-image-segmentation",
         )
         if not args.log_no_examples:
             args.callbacks = [ExamplesLoggingCallback(seed=SEED)]

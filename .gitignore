@@ -225,3 +225,6 @@ $RECYCLE.BIN/
 
 # Ignore the datasets (this is where they're stored by default - if not working on the NYU cluster)
 storage/
+
+# W&B Logs
+wandb/
