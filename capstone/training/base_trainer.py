@@ -2,12 +2,12 @@ from argparse import ArgumentParser
 from typing import List
 
 import pytorch_lightning as pl
-import torch
+import torch.nn as nn
 import torch.optim as optim
-import wandb
 from capstone.data.data_module import MiccaiDataModule2D
 from capstone.models import LOSSES, UNet, losses
 from capstone.paths import DEFAULT_DATA_STORAGE
+from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.utils import miccai
 from monai.metrics.meandice import DiceMetric
 from pytorch_lightning import Trainer, seed_everything
@@ -22,10 +22,17 @@ class BaseUNet2D(pl.LightningModule):
         filters: List = [16, 32, 64, 128, 256],
         use_res_units: bool = False,
         lr: float = 1e-3,
-        loss_fx: str = "BCELoss",
+        loss_fx: list = ["BCELoss"],
+        include_missing: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
+
+        assert isinstance(loss_fx, list), "This module expects a list of loss functions"
+        loss_fx.sort()  # To have consistent order of loss functions
+        for fx in loss_fx:
+            assert fx in LOSSES.keys(), f"Invalid loss function passed: {fx}"
+
         self.save_hyperparameters(
             "structure",
             "batch_size",
@@ -34,9 +41,15 @@ class BaseUNet2D(pl.LightningModule):
             "use_res_units",
             "lr",
             "loss_fx",
+            "include_missing",
         )
         self.unet = self._construct_model()
-        self.loss_func = LOSSES[self.hparams.loss_fx]
+        self.loss_func = nn.ModuleList(
+            [
+                LOSSES[fx](apply_mask=not self.hparams.include_missing)
+                for fx in self.hparams.loss_fx
+            ]
+        )
         self.dice_score = DiceMetric(sigmoid=True, reduction="none")
 
     @property
@@ -72,13 +85,8 @@ class BaseUNet2D(pl.LightningModule):
             self.dice_score(prediction, masks), mask_indicator
         )
 
-        self.log(f"val_{self.hparams.loss_fx}", loss, on_epoch=True)
+        self.log(f"val_{'+'.join(self.hparams.loss_fx)}", loss, on_epoch=True)
         self.log("val_DiceScore", dice_score, on_epoch=True)
-
-        _n_batches = 3
-        if (batch_idx + 1) % (len(self.val_dataloader()) // _n_batches) == 0:
-            # `_n_batches` batches visualized in every epoch
-            self._log_images(images, masks, prediction)
 
         return loss
 
@@ -87,53 +95,16 @@ class BaseUNet2D(pl.LightningModule):
         masks = masks.type_as(images)
         mask_indicator = mask_indicator.type_as(images)
         prediction = self.forward(images)
-        loss = self.loss_func(masks, prediction, mask_indicator)
+        loss = sum([fx(masks, prediction, mask_indicator) for fx in self.loss_func])
 
         return images, masks, mask_indicator, prediction, loss
-
-    def _log_images(self, images, batch_mask, batch_pred):
-        if not self._single_structure:
-            # Converted masks are compatible for visualization. Shape: (N, H, W)
-            convert_values = torch.arange(
-                1, len(miccai.STRUCTURES), device=self.device
-            )[None, :, None, None]
-            converted_mask = (batch_mask * convert_values).sum(dim=1)
-            converted_pred = (batch_pred * convert_values).sum(dim=1)
-
-            class_labels = dict(
-                zip(range(1, len(miccai.STRUCTURES) + 1), miccai.STRUCTURES)
-            )
-            class_labels[0] = "Void"
-        else:
-            converted_mask = batch_mask.squeeze(dim=1)
-            converted_pred = batch_pred.squeeze(dim=1)
-
-            class_labels = {0: "Void", 1: self.hparams.structure}
-
-        vis_list = []
-        for i, sample in enumerate(images):
-            wandb_obj = wandb.Image(
-                sample.permute(1, 2, 0).cpu().numpy(),
-                masks={
-                    "predictions": {
-                        "mask_data": converted_pred[i].cpu().numpy(),
-                        "class_labels": class_labels,
-                    },
-                    "ground_truth": {
-                        "mask_data": converted_mask[i].cpu().numpy(),
-                        "class_labels": class_labels,
-                    },
-                },
-            )
-            vis_list.append(wandb_obj)
-
-        self.logger.experiment.log({"sample_predictions": vis_list})
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     @staticmethod
     def add_model_specific_args(parent_parser):
+        """The parameters specific to the model/data processing."""
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument(
             "--structure",
@@ -167,11 +138,13 @@ class BaseUNet2D(pl.LightningModule):
             "--lr", type=float, default=1e-3, help="Learning rate",
         )
         parser.add_argument(
-            "--loss_fx",
-            type=str,
-            default="BCELoss",
-            choices=list(LOSSES.keys()),
-            help="Loss function",
+            "--loss_fx", nargs="+", type=str, default="BCELoss", help="Loss function",
+        )
+        parser.add_argument(
+            "--include_missing",
+            action="store_true",
+            default=False,
+            help="Include the missing structure annotations while computing the loss",
         )
         return parser
 
@@ -195,16 +168,35 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser()
 
+    parser.add_argument(
+        "--use_wandb",
+        action="store_true",
+        default=False,
+        help="Use Weights & Biases for logging",
+    )
+    parser.add_argument(
+        "--log_no_examples",
+        action="store_true",
+        default=False,
+        help="Don't log sample predictions in Weights & Biases",
+    )
+
     parser = BaseUNet2D.add_model_specific_args(parser)
     parser = Trainer.add_argparse_args(parser)
 
     args = parser.parse_args()
 
+    if isinstance(args.loss_fx, str):
+        args.loss_fx = [args.loss_fx]
+
     if args.default_root_dir is None:
         args.default_root_dir = DEFAULT_DATA_STORAGE
 
-    args.logger = WandbLogger(
-        "Trial-UNet", DEFAULT_DATA_STORAGE, project="ct-image-segmentation"
-    )
+    if args.use_wandb:
+        args.logger = WandbLogger(
+            "Trial-UNet", DEFAULT_DATA_STORAGE, project="ct-image-segmentation"
+        )
+        if not args.log_no_examples:
+            args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
 
     main(args)

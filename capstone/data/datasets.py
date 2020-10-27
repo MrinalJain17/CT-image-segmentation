@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Tuple
 
 import numpy as np
+import torch
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
 from torch.utils.data import Dataset
@@ -55,10 +56,13 @@ class MiccaiDataset2D(Dataset):
 
         if self.structure_required is not None:
             idx = miccai.STRUCTURES.index(self.structure_required)
-            masks = np.expand_dims(masks[idx], axis=0)
-            mask_indicator = np.expand_dims(mask_indicator[idx], axis=0)
+            masks = torch.from_numpy(np.expand_dims(masks[idx], axis=0))
+            mask_indicator = torch.from_numpy(
+                np.expand_dims(mask_indicator[idx], axis=0)
+            )
         else:
-            masks = np.stack(masks)
+            masks = torch.from_numpy(np.stack(masks))
+            mask_indicator = torch.from_numpy(mask_indicator)
 
         return image, masks, mask_indicator
 

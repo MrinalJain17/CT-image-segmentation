@@ -25,7 +25,7 @@ class BaseLossWrapper(nn.Module):
             assert mask_indicator is not None, "Mask indicators not provided"
             return _batch_masked_mean(loss_per_mask, mask_indicator)  # Scalar
 
-        return loss_per_mask  # Shape: (N, C)
+        return loss_per_mask.mean()  # Scalar
 
 
 class BCELossWrapper(BaseLossWrapper):
