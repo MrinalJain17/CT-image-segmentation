@@ -37,8 +37,8 @@ The following are the absolute essentials:
 1. Python (>=3.7)
 2. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
 3. Tqdm - For displaying progress bars
-4. PyTorch (>=1.6)
-5. Torchvision (>=0.7)
+4. PyTorch (>=1.7)
+5. Torchvision (>=0.8)
 6. [Albumentations](https://github.com/albumentations-team/albumentations) (>=0.5) - For data augmentation and transforms
 
 ### Additional requirements

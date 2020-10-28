@@ -2,50 +2,62 @@ from functools import partial
 
 import torch.nn as nn
 import torch.nn.functional as F
-from monai.losses.dice import DiceLoss
+from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
+from pytorch_lightning.metrics.functional import dice_score
 
 
 class BaseLossWrapper(nn.Module):
-    def __init__(self, apply_mask=True):
+    """TODO"""
+
+    def __init__(self) -> None:
         super(BaseLossWrapper, self).__init__()
-        self.loss_fx = None  # Required to be implemented in the subclasses
-        self.apply_mask = apply_mask
+        self.loss_fx = None  # To be assigned in the sub-class
 
-    def _compute_loss_per_mask(self, input, target):
-        raise NotImplementedError()
-
-    def forward(self, input, target, mask_indicator=None):
-        """
-        input, target - Shape: (N, C, H, W)
-        mask_indicator - Shape: (N, C)
-        """
-        loss_per_mask = self._compute_loss_per_mask(input, target)  # Shape: (N, C)
-
-        if self.apply_mask:
-            assert mask_indicator is not None, "Mask indicators not provided"
-            return _batch_masked_mean(loss_per_mask, mask_indicator)  # Scalar
-
-        return loss_per_mask.mean()  # Scalar
+    def forward(self, input, target):
+        return self.loss_fx(input, target)
 
 
-class BCELossWrapper(BaseLossWrapper):
-    def __init__(self, apply_mask=True, **kwargs):
-        super(BCELossWrapper, self).__init__(apply_mask=apply_mask)
-        self.loss_fx = partial(
-            F.binary_cross_entropy_with_logits, reduction="none", **kwargs
-        )
+class CrossEntropyWrapper(BaseLossWrapper):
+    """TODO"""
 
-    def _compute_loss_per_mask(self, input, target):
-        return self.loss_fx(input, target).mean(dim=(2, 3))  # Shape: (N, C)
+    def __init__(self):
+        super(CrossEntropyWrapper, self).__init__()
+        self.loss_fx = partial(F.cross_entropy)
 
 
 class DiceLossWrapper(BaseLossWrapper):
-    def __init__(self, apply_mask=True):
-        super(DiceLossWrapper, self).__init__(apply_mask=apply_mask)
-        self.loss_fx = DiceLoss(sigmoid=True, reduction="none")
+    """TODO"""
 
-    def _compute_loss_per_mask(self, input, target):
-        return self.loss_fx(input, target)  # Shape: (N, C)
+    def __init__(self):
+        super(DiceLossWrapper, self).__init__()
+        self.loss_fx = DiceLoss(
+            include_background=False, to_onehot_y=True, softmax=True
+        )
+
+    def forward(self, input, target):
+        if target.ndim == 3:  # Shape: (N, H, W)
+            target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+        return self.loss_fx(input, target)
+
+
+class GeneralizedDiceLossWrapper(DiceLossWrapper):
+    """TODO"""
+
+    def __init__(self):
+        super(GeneralizedDiceLossWrapper, self).__init__()
+        self.loss_fx = GeneralizedDiceLoss(
+            include_background=False, to_onehot_y=True, softmax=True
+        )
+
+
+class DiceMetricWrapper(object):
+    """TODO"""
+
+    def __init__(self):
+        self.loss_fx = partial(dice_score, bg=False)
+
+    def __call__(self, input, target):
+        return self.loss_fx(input, target)
 
 
 def _batch_masked_mean(array, mask):

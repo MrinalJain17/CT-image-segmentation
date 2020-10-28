@@ -1,4 +1,13 @@
-from capstone.models.losses import BCELossWrapper, DiceLossWrapper
+from capstone.models.losses import (
+    CrossEntropyWrapper,
+    DiceLossWrapper,
+    DiceMetricWrapper,
+    GeneralizedDiceLossWrapper,
+)
 from monai.networks.nets import UNet
 
-LOSSES = {"BCELoss": BCELossWrapper, "DiceLoss": DiceLossWrapper}
+LOSSES = {
+    "CrossEntropy": CrossEntropyWrapper,
+    "Dice": DiceLossWrapper,
+    "GeneralizedDice": GeneralizedDiceLossWrapper,
+}

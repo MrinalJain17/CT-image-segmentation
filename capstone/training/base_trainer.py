@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from typing import List
 
 import pytorch_lightning as pl
+import torch
 import torch.nn as nn
 import torch.optim as optim
 from capstone.data.data_module import MiccaiDataModule2D
@@ -9,7 +10,6 @@ from capstone.models import LOSSES, UNet, losses
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.utils import miccai
-from monai.metrics.meandice import DiceMetric
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import WandbLogger
 
@@ -22,8 +22,7 @@ class BaseUNet2D(pl.LightningModule):
         filters: List = [16, 32, 64, 128, 256],
         use_res_units: bool = False,
         lr: float = 1e-3,
-        loss_fx: list = ["BCELoss"],
-        include_missing: bool = False,
+        loss_fx: list = ["CrossEntropy"],
         **kwargs,
     ) -> None:
         super().__init__()
@@ -41,29 +40,32 @@ class BaseUNet2D(pl.LightningModule):
             "use_res_units",
             "lr",
             "loss_fx",
-            "include_missing",
         )
         self.unet = self._construct_model()
-        self.loss_func = nn.ModuleList(
-            [
-                LOSSES[fx](apply_mask=not self.hparams.include_missing)
-                for fx in self.hparams.loss_fx
-            ]
-        )
-        self.dice_score = DiceMetric(sigmoid=True, reduction="none")
+        self.loss_func = nn.ModuleList([LOSSES[fx]() for fx in self.hparams.loss_fx])
+        self.dice_score = losses.DiceMetricWrapper()
 
     @property
     def _single_structure(self):
         return self.hparams.structure is not None
 
+    @property
+    def _n_classes(self):
+        return (
+            1 if self._single_structure else len(miccai.STRUCTURES)
+        ) + 1  # Additional background
+
     def _construct_model(self):
+        in_channels = 3  # assuming transform_degree in [1, 2, 3]
+        strides = [2, 2, 2, 2]  # Default for 5-layer UNet
+
         return UNet(
-            dimensions=2,  # 2D images
-            in_channels=3,  # assuming transform_degree in [1, 2, 3]
-            out_channels=1 if self._single_structure else len(miccai.STRUCTURES),
+            dimensions=2,
+            in_channels=in_channels,
+            out_channels=self._n_classes,
             channels=self.hparams.filters,
-            strides=[2, 2, 2, 2],  # Default for UNet
-            num_res_units=(2 if self.hparams.use_res_units else 0),  # Default in MONAI,
+            strides=strides,
+            num_res_units=(2 if self.hparams.use_res_units else 0),
         )
 
     def forward(self, x):
@@ -74,16 +76,14 @@ class BaseUNet2D(pl.LightningModule):
         images, masks, mask_indicator, prediction, loss = self._shared_step(
             batch, batch_idx
         )
-        self.log(f"{self.hparams.loss_fx}", loss, on_step=True)
+        self.log(f"{'+'.join(self.hparams.loss_fx)}", loss, on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         images, masks, mask_indicator, prediction, loss = self._shared_step(
             batch, batch_idx
         )
-        dice_score = losses._batch_masked_mean(
-            self.dice_score(prediction, masks), mask_indicator
-        )
+        dice_score = self.dice_score(prediction, masks)
 
         self.log(f"val_{'+'.join(self.hparams.loss_fx)}", loss, on_epoch=True)
         self.log("val_DiceScore", dice_score, on_epoch=True)
@@ -92,10 +92,12 @@ class BaseUNet2D(pl.LightningModule):
 
     def _shared_step(self, batch, batch_idx):
         images, masks, mask_indicator = batch
-        masks = masks.type_as(images)
-        mask_indicator = mask_indicator.type_as(images)
+
+        _temp = torch.arange(1, self._n_classes, device=self.device)
+        masks = (masks * _temp[None, :, None, None]).max(dim=1).values
+
         prediction = self.forward(images)
-        loss = sum([fx(masks, prediction, mask_indicator) for fx in self.loss_func])
+        loss = sum([fx(prediction, masks) for fx in self.loss_func])
 
         return images, masks, mask_indicator, prediction, loss
 
@@ -138,13 +140,11 @@ class BaseUNet2D(pl.LightningModule):
             "--lr", type=float, default=1e-3, help="Learning rate",
         )
         parser.add_argument(
-            "--loss_fx", nargs="+", type=str, default="BCELoss", help="Loss function",
-        )
-        parser.add_argument(
-            "--include_missing",
-            action="store_true",
-            default=False,
-            help="Include the missing structure annotations while computing the loss",
+            "--loss_fx",
+            nargs="+",
+            type=str,
+            default="CrossEntropy",
+            help="Loss function",
         )
         return parser
 
