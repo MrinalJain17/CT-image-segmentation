@@ -60,10 +60,16 @@ def _patient_to_2d(
             region_slides
         )  # Shape: (9, H, W) -> 1 mask for each structure
 
-        filename = (save_location / f"{patient_id}_{index}.npz").as_posix()
-        np.savez(
-            filename, image=slide, masks=region_slides, mask_indicator=mask_indicator
-        )
+        # Ignore the slide if there is no structure (BrainStem, etc) present
+        # It's useless since there's nothing to train/validate on
+        if region_slides.sum() > 0:
+            filename = (save_location / f"{patient_id}_{index}.npz").as_posix()
+            np.savez(
+                filename,
+                image=slide,
+                masks=region_slides,
+                mask_indicator=mask_indicator,
+            )
 
 
 if __name__ == "__main__":

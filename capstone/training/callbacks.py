@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-import wandb
 from capstone.utils import miccai
 from pytorch_lightning.callbacks import Callback
+from wandb import Image
 
 
 class ExamplesLoggingCallback(Callback):
@@ -66,6 +66,9 @@ class ExamplesLoggingCallback(Callback):
         images = images.to(pl_module.device)
         masks = masks.to(pl_module.device)
 
+        _temp = torch.arange(1, pl_module._n_classes, device=pl_module.device)
+        masks = (masks * _temp[None, :, None, None]).max(dim=1).values
+
         sample_images = images[self.sample_indices]
         sample_masks = masks[self.sample_indices]
         sample_preds = pl_module.forward(sample_images)
@@ -73,39 +76,26 @@ class ExamplesLoggingCallback(Callback):
         return sample_images, sample_masks, sample_preds
 
     def _log_images(self, images, batch_mask, batch_pred, pl_module, title=None):
-        # Converting raw predictions to binary using 0.5 as the threshold
-        batch_pred = torch.sigmoid(batch_pred)
-        batch_pred = (batch_pred > 0.5).type_as(batch_mask)
+        # The line below works from PyTorch 1.7 onwards. Will fail for previous versions
+        batch_pred = torch.softmax(batch_pred, dim=1).argmax(dim=1)  # Shape: (N, H, W)
 
-        if not pl_module._single_structure:
-            # Making masks compatible for visualization with wandb. Shape: (N, H, W)
-            convert_values = torch.arange(
-                1, len(miccai.STRUCTURES) + 1, device=pl_module.device
-            )[None, :, None, None]
-            converted_mask = (batch_mask * convert_values).max(dim=1).values
-            converted_pred = (batch_pred * convert_values).max(dim=1).values
-
-            class_labels = dict(
-                zip(range(1, len(miccai.STRUCTURES) + 1), miccai.STRUCTURES)
-            )
-            class_labels[0] = "Void"
-        else:
-            converted_mask = batch_mask.squeeze(dim=1)
-            converted_pred = batch_pred.squeeze(dim=1)
-
+        if pl_module._single_structure:
             class_labels = {0: "Void", 1: pl_module.hparams.structure}
+        else:
+            class_labels = dict(zip(range(1, pl_module._n_classes), miccai.STRUCTURES))
+            class_labels[0] = "Void"
 
         vis_list = []
         for i, sample in enumerate(images):
-            wandb_obj = wandb.Image(
+            wandb_obj = Image(
                 sample.permute(1, 2, 0).detach().cpu().numpy(),
                 masks={
                     "predictions": {
-                        "mask_data": converted_pred[i].detach().cpu().numpy(),
+                        "mask_data": batch_pred[i].detach().cpu().numpy(),
                         "class_labels": class_labels,
                     },
                     "ground_truth": {
-                        "mask_data": converted_mask[i].detach().cpu().numpy(),
+                        "mask_data": batch_mask[i].detach().cpu().numpy(),
                         "class_labels": class_labels,
                     },
                 },
