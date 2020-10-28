@@ -95,7 +95,7 @@ class BaseUNet2D(pl.LightningModule):
         masks = masks.type_as(images)
         mask_indicator = mask_indicator.type_as(images)
         prediction = self.forward(images)
-        loss = sum([fx(masks, prediction, mask_indicator) for fx in self.loss_func])
+        loss = sum([fx(prediction, masks, mask_indicator) for fx in self.loss_func])
 
         return images, masks, mask_indicator, prediction, loss
 
