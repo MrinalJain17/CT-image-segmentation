@@ -34,7 +34,6 @@ class BaseUNet2D(pl.LightningModule):
             assert fx in LOSSES.keys(), f"Invalid loss function passed: {fx}"
 
         self.save_hyperparameters(
-            "structure",
             "batch_size",
             "transform_degree",
             "filters",
@@ -43,20 +42,14 @@ class BaseUNet2D(pl.LightningModule):
             "lr",
             "loss_fx",
         )
-        self.conv1 = nn.Conv2d(3, 1, 1, 1)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.unet = self._construct_model()
         self.loss_func = nn.ModuleList([LOSSES[fx]() for fx in self.hparams.loss_fx])
         self.dice_score = losses.DiceMetricWrapper()
 
     @property
-    def _single_structure(self):
-        return self.hparams.structure is not None
-
-    @property
     def _n_classes(self):
-        return (
-            1 if self._single_structure else len(miccai.STRUCTURES)
-        ) + 1  # Additional background
+        return len(miccai.STRUCTURES) + 1  # Additional background
 
     def _construct_model(self):
         in_channels = (
@@ -99,9 +92,7 @@ class BaseUNet2D(pl.LightningModule):
 
     def _shared_step(self, batch, batch_idx):
         images, masks, mask_indicator = batch
-
-        _temp = torch.arange(1, self._n_classes, device=self.device)
-        masks = (masks * _temp[None, :, None, None]).max(dim=1).values
+        masks = _squash_masks(masks, self._n_classes, self.device)
 
         prediction = self.forward(images)
         loss = sum([fx(prediction, masks) for fx in self.loss_func])
@@ -115,12 +106,6 @@ class BaseUNet2D(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         """The parameters specific to the model/data processing."""
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument(
-            "--structure",
-            type=str,
-            default=None,
-            help="A specific structure for the segmentation task",
-        )
         parser.add_argument(
             "--batch_size", type=int, default=64, help="Batch size",
         )
@@ -160,6 +145,12 @@ class BaseUNet2D(pl.LightningModule):
             help="Loss function",
         )
         return parser
+
+
+def _squash_masks(self, masks, n_classes, device):
+    _temp = torch.arange(1, n_classes, device)
+    masks = (masks * _temp[None, :, None, None]).max(dim=1).values
+    return masks
 
 
 def main(args):
