@@ -14,6 +14,7 @@ DEGREE = {
     1: predefined.windowed_degree_1,
     2: predefined.windowed_degree_2,
     3: predefined.windowed_degree_3,
+    4: predefined.windowed_degree_4,
 }
 
 

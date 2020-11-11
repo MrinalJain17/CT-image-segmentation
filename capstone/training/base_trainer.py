@@ -21,6 +21,7 @@ class BaseUNet2D(pl.LightningModule):
         self,
         filters: List = [16, 32, 64, 128, 256],
         use_res_units: bool = False,
+        use_conv1: bool = False,
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         **kwargs,
@@ -38,9 +39,11 @@ class BaseUNet2D(pl.LightningModule):
             "transform_degree",
             "filters",
             "use_res_units",
+            "use_conv1",
             "lr",
             "loss_fx",
         )
+        self.conv1 = nn.Conv2d(3, 1, 1, 1)
         self.unet = self._construct_model()
         self.loss_func = nn.ModuleList([LOSSES[fx]() for fx in self.hparams.loss_fx])
         self.dice_score = losses.DiceMetricWrapper()
@@ -56,7 +59,9 @@ class BaseUNet2D(pl.LightningModule):
         ) + 1  # Additional background
 
     def _construct_model(self):
-        in_channels = 3  # assuming transform_degree in [1, 2, 3]
+        in_channels = (
+            1 if self.hparams.use_conv1 else 3
+        )  # assuming transform_degree in [1, 2, 3, 4]
         strides = [2, 2, 2, 2]  # Default for 5-layer UNet
 
         return UNet(
@@ -69,6 +74,8 @@ class BaseUNet2D(pl.LightningModule):
         )
 
     def forward(self, x):
+        if self.hparams.use_conv1:
+            x = self.conv1(x)
         x = self.unet(x)
         return x
 
@@ -132,9 +139,15 @@ class BaseUNet2D(pl.LightningModule):
         )
         parser.add_argument(
             "--use_res_units",
-            type=bool,
+            action="store_true",
             default=False,
             help="For using residual units in UNet",
+        )
+        parser.add_argument(
+            "--use_conv1",
+            action="store_true",
+            default=False,
+            help="For using a 1x1 convolution to downsample the input before UNet",
         )
         parser.add_argument(
             "--lr", type=float, default=1e-3, help="Learning rate",
