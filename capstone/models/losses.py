@@ -17,7 +17,11 @@ class BaseLossWrapper(nn.Module):
         raise NotImplementedError
 
     def forward(self, input, target):
+        input, target = self._process(input, target)
         return self.loss_fx(input, target)
+
+    def _process(self, input, target):
+        return (input, target)
 
 
 class CrossEntropyWrapper(BaseLossWrapper):
@@ -41,6 +45,11 @@ class DiceLossWrapper(BaseLossWrapper):
     def loss_fx(self):
         return DiceLoss(include_background=False, to_onehot_y=True, softmax=True)
 
+    def _process(self, input, target):
+        if target.ndim == 3:  # Shape: (N, H, W)
+            target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+        return (input, target)
+
 
 class GeneralizedDiceLossWrapper(BaseLossWrapper):
     """TODO"""
@@ -53,6 +62,11 @@ class GeneralizedDiceLossWrapper(BaseLossWrapper):
         return GeneralizedDiceLoss(
             include_background=False, to_onehot_y=True, softmax=True
         )
+
+    def _process(self, input, target):
+        if target.ndim == 3:  # Shape: (N, H, W)
+            target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+        return (input, target)
 
 
 class DiceMetricWrapper(object):
