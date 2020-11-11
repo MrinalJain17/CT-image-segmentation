@@ -21,20 +21,14 @@ class MiccaiDataset2D(Dataset):
 
     """
 
-    def __init__(self, path: str, structure: str = None, transform=None) -> None:
+    def __init__(self, path: str, transform=None) -> None:
         self.path = Path(path).absolute()
-        self.structure_required = structure
         self.transform = transform
 
         self.instance_paths = []
         for instance in self.path.iterdir():
             self.instance_paths.append(instance.as_posix())
         self.instance_paths.sort()  # To get same order on Windows and Linux (cluster)
-
-        if self.structure_required is not None:
-            assert (
-                self.structure_required in miccai.STRUCTURES
-            ), "Invalid structure name passed"
 
     def __len__(self) -> int:
         return len(self.instance_paths)
@@ -54,23 +48,14 @@ class MiccaiDataset2D(Dataset):
             image = transformed["image"]
             masks = transformed["masks"]
 
-        if self.structure_required is not None:
-            idx = miccai.STRUCTURES.index(self.structure_required)
-            masks = torch.from_numpy(np.expand_dims(masks[idx], axis=0))
-            mask_indicator = torch.from_numpy(
-                np.expand_dims(mask_indicator[idx], axis=0)
-            )
-        else:
-            masks = torch.from_numpy(np.stack(masks))
-            mask_indicator = torch.from_numpy(mask_indicator)
+        masks = torch.from_numpy(np.stack(masks))
+        mask_indicator = torch.from_numpy(mask_indicator)
 
         return image, masks, mask_indicator
 
 
-def get_miccai_2d(
-    split: str = "train", structure: str = None, transform=None
-) -> Dataset:
+def get_miccai_2d(split: str = "train", transform=None) -> Dataset:
     assert split in ["train", "valid", "test"], "Invalid data split passed"
     path = DEFAULT_DATA_STORAGE + f"/miccai_2d/{split}"
 
-    return MiccaiDataset2D(path, structure=structure, transform=transform)
+    return MiccaiDataset2D(path, transform=transform)

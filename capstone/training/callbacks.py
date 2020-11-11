@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from capstone.training.utils import _squash_masks
 from capstone.utils import miccai
 from pytorch_lightning.callbacks import Callback
 from wandb import Image
@@ -66,8 +67,7 @@ class ExamplesLoggingCallback(Callback):
         images = images.to(pl_module.device)
         masks = masks.to(pl_module.device)
 
-        _temp = torch.arange(1, pl_module._n_classes, device=pl_module.device)
-        masks = (masks * _temp[None, :, None, None]).max(dim=1).values
+        masks = _squash_masks(masks, pl_module._n_classes, pl_module.device)
 
         sample_images = images[self.sample_indices]
         sample_masks = masks[self.sample_indices]
@@ -76,14 +76,12 @@ class ExamplesLoggingCallback(Callback):
         return sample_images, sample_masks, sample_preds
 
     def _log_images(self, images, batch_mask, batch_pred, pl_module, title=None):
-        # The line below works from PyTorch 1.7 onwards. Will fail for previous versions
+        #  This functions works from PyTorch 1.7 onwards. Will fail for previous
+        # versions due to changes in `max()` and `argmax()`
         batch_pred = torch.softmax(batch_pred, dim=1).argmax(dim=1)  # Shape: (N, H, W)
 
-        if pl_module._single_structure:
-            class_labels = {0: "Void", 1: pl_module.hparams.structure}
-        else:
-            class_labels = dict(zip(range(1, pl_module._n_classes), miccai.STRUCTURES))
-            class_labels[0] = "Void"
+        class_labels = dict(zip(range(1, pl_module._n_classes), miccai.STRUCTURES))
+        class_labels[0] = "Void"
 
         vis_list = []
         for i, sample in enumerate(images):
@@ -102,4 +100,6 @@ class ExamplesLoggingCallback(Callback):
             )
             vis_list.append(wandb_obj)
 
-        pl_module.logger.experiment.log({f"{title}": vis_list})
+        pl_module.logger.experiment.log(
+            {f"{title}": vis_list}, step=pl_module.trainer.global_step
+        )

@@ -11,10 +11,17 @@ class BaseLossWrapper(nn.Module):
 
     def __init__(self) -> None:
         super(BaseLossWrapper, self).__init__()
-        self.loss_fx = None  # To be assigned in the sub-class
+
+    @property
+    def loss_fx(self):
+        raise NotImplementedError
 
     def forward(self, input, target):
+        input, target = self._process(input, target)
         return self.loss_fx(input, target)
+
+    def _process(self, input, target):
+        return (input, target)
 
 
 class CrossEntropyWrapper(BaseLossWrapper):
@@ -22,7 +29,10 @@ class CrossEntropyWrapper(BaseLossWrapper):
 
     def __init__(self):
         super(CrossEntropyWrapper, self).__init__()
-        self.loss_fx = partial(F.cross_entropy)
+
+    @property
+    def loss_fx(self):
+        return F.cross_entropy
 
 
 class DiceLossWrapper(BaseLossWrapper):
@@ -30,24 +40,33 @@ class DiceLossWrapper(BaseLossWrapper):
 
     def __init__(self):
         super(DiceLossWrapper, self).__init__()
-        self.loss_fx = DiceLoss(
-            include_background=False, to_onehot_y=True, softmax=True
-        )
 
-    def forward(self, input, target):
+    @property
+    def loss_fx(self):
+        return DiceLoss(include_background=False, to_onehot_y=True, softmax=True)
+
+    def _process(self, input, target):
         if target.ndim == 3:  # Shape: (N, H, W)
             target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
-        return self.loss_fx(input, target)
+        return (input, target)
 
 
-class GeneralizedDiceLossWrapper(DiceLossWrapper):
+class GeneralizedDiceLossWrapper(BaseLossWrapper):
     """TODO"""
 
     def __init__(self):
         super(GeneralizedDiceLossWrapper, self).__init__()
-        self.loss_fx = GeneralizedDiceLoss(
+
+    @property
+    def loss_fx(self):
+        return GeneralizedDiceLoss(
             include_background=False, to_onehot_y=True, softmax=True
         )
+
+    def _process(self, input, target):
+        if target.ndim == 3:  # Shape: (N, H, W)
+            target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+        return (input, target)
 
 
 class DiceMetricWrapper(object):
