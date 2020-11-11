@@ -73,29 +73,34 @@ class BaseUNet2D(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, batch_idx
+            batch, is_training=True
         )
-        self.log(f"{'+'.join(self.hparams.loss_fx)}", loss, on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, batch_idx
+            batch, is_training=False
         )
-        dice_score = self.dice_score(prediction, masks)
 
-        self.log(f"val_{'+'.join(self.hparams.loss_fx)}", loss, on_epoch=True)
+        dice_score = self.dice_score(prediction, masks)
         self.log("val_DiceScore", dice_score, on_epoch=True)
 
         return loss
 
-    def _shared_step(self, batch, batch_idx):
+    def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
 
         prediction = self.forward(images)
         loss_dict = self.loss_func(input=prediction, target=masks)
         total_loss = torch.stack(list(loss_dict.values())).sum()
+
+        prefix, on_step, on_epoch = (
+            ("train", True, False) if is_training else ("val", False, True)
+        )
+
+        for name, loss_value in loss_dict.items():
+            self.log(f"{prefix}_{name}", loss_value, on_step=on_step, on_epoch=on_epoch)
 
         return images, masks, mask_indicator, prediction, total_loss
 
