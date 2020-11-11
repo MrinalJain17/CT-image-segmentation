@@ -82,10 +82,9 @@ class BaseUNet2D(pl.LightningModule):
             batch, is_training=False
         )
 
-        dice_score = self.dice_score(prediction, masks)
-        self.log("val_DiceScore", dice_score, on_epoch=True)
-
-        return loss
+        dice_scores = self.dice_score(prediction, masks)  # Per-class
+        for structure, score in zip(miccai.STRUCTURES, dice_scores):
+            self.log(f"Dice Score ({structure})", score, on_step=False, on_epoch=True)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
@@ -100,7 +99,12 @@ class BaseUNet2D(pl.LightningModule):
         )
 
         for name, loss_value in loss_dict.items():
-            self.log(f"{prefix}_{name}", loss_value, on_step=on_step, on_epoch=on_epoch)
+            self.log(
+                f"{name} Loss ({prefix})",
+                loss_value,
+                on_step=on_step,
+                on_epoch=on_epoch,
+            )
 
         return images, masks, mask_indicator, prediction, total_loss
 

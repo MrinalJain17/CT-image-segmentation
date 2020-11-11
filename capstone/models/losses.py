@@ -73,10 +73,13 @@ class DiceMetricWrapper(object):
     """TODO"""
 
     def __init__(self):
-        self.loss_fx = partial(dice_score, bg=False)
+        self.metric_fx = DiceLoss(
+            include_background=False, to_onehot_y=True, softmax=True, reduction="none"
+        )
 
     def __call__(self, input, target):
-        return self.loss_fx(input, target)
+        score = self.metric_fx(input, target)  # Shape: (N, C)
+        return 1 - score.mean(dim=0)
 
 
 LOSSES = {
