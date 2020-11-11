@@ -88,6 +88,7 @@ LOSSES = {
 
 class MultipleLossWrapper(nn.Module):
     def __init__(self, losses):
+        super(MultipleLossWrapper, self).__init__()
         for name in losses:
             assert name in LOSSES.keys()
         self.losses = nn.ModuleDict({name: LOSSES[name] for name in losses})
