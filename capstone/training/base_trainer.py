@@ -2,13 +2,13 @@ from argparse import ArgumentParser
 from typing import List
 
 import pytorch_lightning as pl
-import torch
 import torch.nn as nn
 import torch.optim as optim
 from capstone.data.data_module import MiccaiDataModule2D
 from capstone.models import LOSSES, UNet, losses
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
+from capstone.training.utils import _squash_masks
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import WandbLogger
@@ -21,7 +21,7 @@ class BaseUNet2D(pl.LightningModule):
         self,
         filters: List = [16, 32, 64, 128, 256],
         use_res_units: bool = False,
-        use_conv1: bool = False,
+        downsample: bool = False,
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         **kwargs,
@@ -38,7 +38,7 @@ class BaseUNet2D(pl.LightningModule):
             "transform_degree",
             "filters",
             "use_res_units",
-            "use_conv1",
+            "downsample",
             "lr",
             "loss_fx",
         )
@@ -53,7 +53,7 @@ class BaseUNet2D(pl.LightningModule):
 
     def _construct_model(self):
         in_channels = (
-            1 if self.hparams.use_conv1 else 3
+            1 if self.hparams.downsample else 3
         )  # assuming transform_degree in [1, 2, 3, 4]
         strides = [2, 2, 2, 2]  # Default for 5-layer UNet
 
@@ -67,7 +67,7 @@ class BaseUNet2D(pl.LightningModule):
         )
 
     def forward(self, x):
-        if self.hparams.use_conv1:
+        if self.hparams.downsample:
             x = self.conv1(x)
         x = self.unet(x)
         return x
@@ -129,7 +129,7 @@ class BaseUNet2D(pl.LightningModule):
             help="For using residual units in UNet",
         )
         parser.add_argument(
-            "--use_conv1",
+            "--downsample",
             action="store_true",
             default=False,
             help="For using a 1x1 convolution to downsample the input before UNet",
@@ -145,12 +145,6 @@ class BaseUNet2D(pl.LightningModule):
             help="Loss function",
         )
         return parser
-
-
-def _squash_masks(self, masks, n_classes, device):
-    _temp = torch.arange(1, n_classes, device)
-    masks = (masks * _temp[None, :, None, None]).max(dim=1).values
-    return masks
 
 
 def main(args):

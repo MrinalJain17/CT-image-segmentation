@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from capstone.training.base_trainer import _squash_masks
+from capstone.training.utils import _squash_masks
 from capstone.utils import miccai
 from pytorch_lightning.callbacks import Callback
 from wandb import Image
