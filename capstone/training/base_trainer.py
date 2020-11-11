@@ -2,10 +2,11 @@ from argparse import ArgumentParser
 from typing import List
 
 import pytorch_lightning as pl
+import torch
 import torch.nn as nn
 import torch.optim as optim
 from capstone.data.data_module import MiccaiDataModule2D
-from capstone.models import LOSSES, UNet, losses
+from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.training.utils import _squash_masks
@@ -30,8 +31,6 @@ class BaseUNet2D(pl.LightningModule):
 
         assert isinstance(loss_fx, list), "This module expects a list of loss functions"
         loss_fx.sort()  # To have consistent order of loss functions
-        for fx in loss_fx:
-            assert fx in LOSSES.keys(), f"Invalid loss function passed: {fx}"
 
         self.save_hyperparameters(
             "batch_size",
@@ -44,8 +43,8 @@ class BaseUNet2D(pl.LightningModule):
         )
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.unet = self._construct_model()
-        self.loss_func = nn.ModuleList([LOSSES[fx]() for fx in self.hparams.loss_fx])
-        self.dice_score = losses.DiceMetricWrapper()
+        self.loss_func = MultipleLossWrapper(losses=loss_fx)
+        self.dice_score = DiceMetricWrapper()
 
     @property
     def _n_classes(self):
@@ -95,9 +94,10 @@ class BaseUNet2D(pl.LightningModule):
         masks = _squash_masks(masks, self._n_classes, self.device)
 
         prediction = self.forward(images)
-        loss = sum([fx(prediction, masks) for fx in self.loss_func])
+        loss_dict = self.loss_func(input=prediction, target=masks)
+        total_loss = torch.stack(list(loss_dict.values())).sum()
 
-        return images, masks, mask_indicator, prediction, loss
+        return images, masks, mask_indicator, prediction, total_loss
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.hparams.lr)

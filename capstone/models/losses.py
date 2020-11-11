@@ -79,6 +79,24 @@ class DiceMetricWrapper(object):
         return self.loss_fx(input, target)
 
 
+LOSSES = {
+    "CrossEntropy": CrossEntropyWrapper(),
+    "Dice": DiceLossWrapper(),
+    "GeneralizedDice": GeneralizedDiceLossWrapper(),
+}
+
+
+class MultipleLossWrapper(nn.Module):
+    def __init__(self, losses):
+        for name in losses:
+            assert name in LOSSES.keys()
+        self.losses = nn.ModuleDict({name: LOSSES[name] for name in losses})
+
+    def forward(self, input, target):
+        values = {name: fx(input, target) for (name, fx) in self.losses.items()}
+        return values
+
+
 def _batch_masked_mean(array, mask):
     """
     array, mask - Shape: (N, C)
