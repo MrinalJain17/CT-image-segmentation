@@ -102,16 +102,13 @@ class BaseUNet2D(pl.LightningModule):
     def _log_dice_scores(self, prediction, masks, prefix):
         self.eval()
         with torch.no_grad():
-            dice_scores = self.dice_score(prediction, masks)  # Per-class
-            for structure, score in zip(miccai.STRUCTURES, dice_scores):
+            dice_mean, dice_per_class = self.dice_score(prediction, masks)
+            for structure, score in zip(miccai.STRUCTURES, dice_per_class):
                 self.log(
                     f"{structure} Dice ({prefix})", score, on_step=False, on_epoch=True,
                 )
             self.log(
-                f"Mean Dice Score ({prefix})",
-                dice_scores.mean(),
-                on_step=False,
-                on_epoch=True,
+                f"Mean Dice Score ({prefix})", dice_mean, on_step=False, on_epoch=True,
             )
         self.train()
 
