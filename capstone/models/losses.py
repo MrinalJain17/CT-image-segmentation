@@ -1,9 +1,6 @@
-from functools import partial
-
 import torch.nn as nn
 import torch.nn.functional as F
 from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
-from pytorch_lightning.metrics.functional import dice_score
 
 
 class BaseLossWrapper(nn.Module):
