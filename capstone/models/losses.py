@@ -78,8 +78,14 @@ class DiceMetricWrapper(object):
         )
 
     def __call__(self, input, target):
+        input, target = self._process(input, target)
         score = self.metric_fx(input, target)  # Shape: (N, C)
         return 1 - score.mean(dim=0)
+
+    def _process(self, input, target):
+        if target.ndim == 3:  # Shape: (N, H, W)
+            target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+        return (input, target)
 
 
 LOSSES = {
