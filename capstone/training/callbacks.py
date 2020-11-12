@@ -18,7 +18,7 @@ class ExamplesLoggingCallback(Callback):
     def on_fit_start(self, trainer, pl_module):
         self.sample_indices = self.rng.choice(
             np.arange(pl_module.hparams.batch_size, dtype=int),
-            size=int(pl_module.hparams.batch_size * self.num_examples),
+            size=np.math.ceil(pl_module.hparams.batch_size * self.num_examples),
             replace=False,
         )
         self.num_train_batches = len(trainer.datamodule.train_dataloader())
@@ -76,7 +76,7 @@ class ExamplesLoggingCallback(Callback):
         return sample_images, sample_masks, sample_preds
 
     def _log_images(self, images, batch_mask, batch_pred, pl_module, title=None):
-        #  This functions works from PyTorch 1.7 onwards. Will fail for previous
+        # This functions works from PyTorch 1.7 onwards. Will fail for previous
         # versions due to changes in `max()` and `argmax()`
         batch_pred = torch.softmax(batch_pred, dim=1).argmax(dim=1)  # Shape: (N, H, W)
 
