@@ -18,7 +18,7 @@ class ExamplesLoggingCallback(Callback):
     def on_fit_start(self, trainer, pl_module):
         self.sample_indices = self.rng.choice(
             np.arange(pl_module.hparams.batch_size, dtype=int),
-            size=int(pl_module.hparams.batch_size * self.num_examples),
+            size=np.math.ceil(pl_module.hparams.batch_size * self.num_examples),
             replace=False,
         )
         self.num_train_batches = len(trainer.datamodule.train_dataloader())

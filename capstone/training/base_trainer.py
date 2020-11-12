@@ -82,31 +82,38 @@ class BaseUNet2D(pl.LightningModule):
             batch, is_training=False
         )
 
-        dice_scores = self.dice_score(prediction, masks)  # Per-class
-        for structure, score in zip(miccai.STRUCTURES, dice_scores):
-            self.log(f"Dice Score ({structure})", score, on_step=False, on_epoch=True)
-
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
+        prefix = "train" if is_training else "val"
 
         prediction = self.forward(images)
         loss_dict = self.loss_func(input=prediction, target=masks)
         total_loss = torch.stack(list(loss_dict.values())).sum()
 
-        prefix, on_step, on_epoch = (
-            ("train", True, False) if is_training else ("val", False, True)
-        )
-
         for name, loss_value in loss_dict.items():
             self.log(
-                f"{name} Loss ({prefix})",
-                loss_value,
-                on_step=on_step,
-                on_epoch=on_epoch,
+                f"{name} Loss ({prefix})", loss_value, on_step=False, on_epoch=True,
             )
 
+        self._log_dice_scores(prediction, masks, prefix)
         return images, masks, mask_indicator, prediction, total_loss
+
+    def _log_dice_scores(self, prediction, masks, prefix):
+        self.eval()
+        with torch.no_grad():
+            dice_scores = self.dice_score(prediction, masks)  # Per-class
+            for structure, score in zip(miccai.STRUCTURES, dice_scores):
+                self.log(
+                    f"{structure} Dice ({prefix})", score, on_step=False, on_epoch=True,
+                )
+            self.log(
+                f"Mean Dice Score ({prefix})",
+                dice_scores.mean(),
+                on_step=False,
+                on_epoch=True,
+            )
+        self.train()
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.hparams.lr)
