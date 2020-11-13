@@ -9,7 +9,7 @@ from capstone.data.data_module import MiccaiDataModule2D
 from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
-from capstone.training.utils import _squash_masks
+from capstone.training.utils import _squash_masks, _squash_predictions
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import WandbLogger
@@ -102,6 +102,7 @@ class BaseUNet2D(pl.LightningModule):
     def _log_dice_scores(self, prediction, masks, prefix):
         self.eval()
         with torch.no_grad():
+            prediction = _squash_predictions(prediction)  # Shape: (N, H, W)
             dice_mean, dice_per_class = self.dice_score(prediction, masks)
             for structure, score in zip(miccai.STRUCTURES, dice_per_class):
                 self.log(
@@ -132,7 +133,7 @@ class BaseUNet2D(pl.LightningModule):
             "--filters",
             nargs=5,
             type=int,
-            default=[16, 32, 64, 128, 256],
+            default=[64, 128, 256, 512, 1024],
             help="A sqeuence of number of filters for the downsampling path in UNet",
         )
         parser.add_argument(
@@ -178,18 +179,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-
     parser.add_argument(
         "--use_wandb",
         action="store_true",
         default=False,
         help="Use Weights & Biases for logging",
-    )
-    parser.add_argument(
-        "--log_no_examples",
-        action="store_true",
-        default=False,
-        help="Don't log sample predictions in Weights & Biases",
     )
 
     parser = BaseUNet2D.add_model_specific_args(parser)
@@ -209,7 +203,6 @@ if __name__ == "__main__":
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",
         )
-        if not args.log_no_examples:
-            args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
+        args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
 
     main(args)
