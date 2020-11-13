@@ -41,7 +41,7 @@ class BaseUNet2D(pl.LightningModule):
             "lr",
             "loss_fx",
         )
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
+        self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.unet = self._construct_model()
         self.loss_func = MultipleLossWrapper(losses=loss_fx)
         self.dice_score = DiceMetricWrapper()
@@ -67,7 +67,7 @@ class BaseUNet2D(pl.LightningModule):
 
     def forward(self, x):
         if self.hparams.downsample:
-            x = self.conv1(x)
+            x = self.conv1x1(x)
         x = self.unet(x)
         return x
 

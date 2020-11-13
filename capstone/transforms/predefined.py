@@ -3,8 +3,6 @@ from albumentations.pytorch.transforms import ToTensorV2
 from capstone.transforms.transforms_2d import WindowedChannels
 
 _stacked_window_stats = {"mean": (0.107, 0.135, 0.085), "std": (0.271, 0.267, 0.152)}
-# _no_window_stats = {"mean": (0.077), "std": (0.133)}
-
 _minimal_windowed_transform = A.Compose(
     [
         WindowedChannels(),

@@ -1,5 +1,6 @@
 from functools import partial
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from capstone.models.metrics import compute_meandice, do_metric_reduction
@@ -7,11 +8,24 @@ from capstone.utils import miccai
 from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
 from monai.transforms import AsDiscrete
 
+WEIGHT = {
+    "Background": 0.0,
+    "BrainStem": 0.007,
+    "Chiasm": 0.3296,
+    "Mandible": 0.0046,
+    "OpticNerve_L": 0.2619,
+    "OpticNerve_R": 0.3035,
+    "Parotid_L": 0.0068,
+    "Parotid_R": 0.0065,
+    "Submandibular_L": 0.0374,
+    "Submandibular_R": 0.0426,
+}  # Inverse pixel-frequency (Background is given no weight)
+
 
 class BaseLossWrapper(nn.Module):
     """TODO"""
 
-    def __init__(self) -> None:
+    def __init__(self):
         super(BaseLossWrapper, self).__init__()
 
     @property
@@ -35,6 +49,18 @@ class CrossEntropyWrapper(BaseLossWrapper):
     @property
     def loss_fx(self):
         return F.cross_entropy
+
+
+class WeightedCrossEntropyWrapper(CrossEntropyWrapper):
+    """TODO"""
+
+    def __init__(self):
+        super(WeightedCrossEntropyWrapper, self).__init__()
+        self.weight = torch.as_tensor(list(WEIGHT.values()))
+
+    def forward(self, input, target):
+        input, target = self._process(input, target)
+        return self.loss_fx(input, target, weight=self.weight.type_as(input))
 
 
 class DiceLossWrapper(BaseLossWrapper):
@@ -103,6 +129,7 @@ LOSSES = {
     "CrossEntropy": CrossEntropyWrapper(),
     "Dice": DiceLossWrapper(),
     "GeneralizedDice": GeneralizedDiceLossWrapper(),
+    "WeightedCrossEntropy": WeightedCrossEntropyWrapper(),
 }
 
 
