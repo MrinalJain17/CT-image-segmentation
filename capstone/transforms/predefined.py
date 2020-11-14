@@ -63,15 +63,12 @@ windowed_degree_4 = {
         [
             WindowedChannels(),
             A.RandomCrop(256, 256),
-            A.ElasticTransform(),
-            A.RandomRotate90(),
-            A.HorizontalFlip(),
+            A.OneOf([A.ElasticTransform(), A.GridDistortion()]),
             A.Normalize(
                 mean=_stacked_window_stats["mean"],
                 std=_stacked_window_stats["std"],
                 max_pixel_value=1.0,
             ),
-            A.ChannelShuffle(),
             ToTensorV2(),
         ]
     ),

@@ -126,7 +126,7 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--transform_degree",
             type=int,
-            default=2,
+            default=3,
             help="The degree of transforms/data augmentation to be applied",
         )
         parser.add_argument(
@@ -185,6 +185,12 @@ if __name__ == "__main__":
         default=False,
         help="Use Weights & Biases for logging",
     )
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="UNet 2D",
+        help="Experiment name for Weights & Biases",
+    )
 
     parser = BaseUNet2D.add_model_specific_args(parser)
     parser = Trainer.add_argparse_args(parser)
@@ -199,7 +205,7 @@ if __name__ == "__main__":
 
     if args.use_wandb:
         args.logger = WandbLogger(
-            name="UNet 2D",
+            name=args.experiment_name,
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",
         )
