@@ -9,7 +9,7 @@ from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
 from monai.transforms import AsDiscrete
 
 WEIGHT = {
-    "Background": 0.0,
+    "Background": 1e-10,
     "BrainStem": 0.007,
     "Chiasm": 0.3296,
     "Mandible": 0.0046,
