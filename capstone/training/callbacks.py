@@ -50,11 +50,12 @@ class ExamplesLoggingCallback(Callback):
 
         sample_images = images[self.sample_indices]
         sample_masks = masks[self.sample_indices]
+        sample_mask_indicator = mask_indicator[self.sample_indices]
         sample_preds = pl_module.forward(sample_images)
         if pl_module.hparams.exclude_missing:
             # No indicator for background
             sample_preds[:, 1:, :, :] = (
-                sample_preds[:, 1:, :, :] * mask_indicator[:, :, None, None]
+                sample_preds[:, 1:, :, :] * sample_mask_indicator[:, :, None, None]
             )
 
         return sample_images, sample_masks, sample_preds
