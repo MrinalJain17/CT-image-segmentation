@@ -13,6 +13,7 @@ from capstone.training.utils import _squash_masks, _squash_predictions
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.utilities import rank_zero_only
 
 SEED = 12342
 
@@ -89,6 +90,7 @@ class BaseUNet2D(pl.LightningModule):
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
+        mask_indicator = mask_indicator.type_as(images)
         prefix = "train" if is_training else "val"
 
         prediction = self.forward(images)
@@ -102,12 +104,17 @@ class BaseUNet2D(pl.LightningModule):
                 f"{name} Loss ({prefix})", loss_value, on_step=False, on_epoch=True,
             )
 
-        self._log_dice_scores(prediction, masks, prefix)
+        self._log_dice_scores(prediction, masks, mask_indicator, prefix)
         return images, masks, mask_indicator, prediction, total_loss
 
-    def _log_dice_scores(self, prediction, masks, prefix):
+    def _log_dice_scores(self, prediction, masks, mask_indicator, prefix):
         self.eval()
         with torch.no_grad():
+            if self.hparams.exclude_missing:
+                # No indicator for background
+                prediction[:, 1:, :, :] = (
+                    prediction[:, 1:, :, :] * mask_indicator[:, :, None, None]
+                )
             prediction = _squash_predictions(prediction)  # Shape: (N, H, W)
             dice_mean, dice_per_class = self.dice_score(prediction, masks)
             for structure, score in zip(miccai.STRUCTURES, dice_per_class):
@@ -173,6 +180,19 @@ class BaseUNet2D(pl.LightningModule):
         return parser
 
 
+class WandbLoggerPatch(WandbLogger):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @rank_zero_only
+    def log_hyperparams(self, params):
+        params = self._convert_params(params)
+        params = self._flatten_dict(params)
+        params = self._sanitize_callable_params(params)
+        params = self._sanitize_params(params)
+        self.experiment.config.update(params, allow_val_change=True)
+
+
 def main(args):
     seed_everything(SEED)
     dict_args = vars(args)
@@ -216,7 +236,7 @@ if __name__ == "__main__":
         args.default_root_dir = DEFAULT_DATA_STORAGE
 
     if args.use_wandb:
-        args.logger = WandbLogger(
+        args.logger = WandbLoggerPatch(
             name=args.experiment_name,
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",

@@ -1,3 +1,8 @@
+"""
+These functions works from PyTorch 1.7 onwards. Will fail for previous
+versions due to changes in `max()` and `argmax()`
+"""
+
 import torch
 
 
@@ -8,8 +13,4 @@ def _squash_masks(masks, n_classes, device):
 
 
 def _squash_predictions(preds):
-    """
-    This functions works from PyTorch 1.7 onwards. Will fail for previous
-    versions due to changes in `max()` and `argmax()`
-    """
     return torch.softmax(preds, dim=1).argmax(dim=1)  # Shape: (N, H, W)

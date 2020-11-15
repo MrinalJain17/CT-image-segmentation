@@ -41,15 +41,21 @@ class ExamplesLoggingCallback(Callback):
                 )
 
     def _make_predictions(self, batch, pl_module):
-        images, masks, _ = batch
+        images, masks, mask_indicator = batch
         images = images.to(pl_module.device)
         masks = masks.to(pl_module.device)
+        mask_indicator = mask_indicator.to(pl_module.device).type_as(images)
 
         masks = _squash_masks(masks, pl_module._n_classes, pl_module.device)
 
         sample_images = images[self.sample_indices]
         sample_masks = masks[self.sample_indices]
         sample_preds = pl_module.forward(sample_images)
+        if pl_module.hparams.exclude_missing:
+            # No indicator for background
+            sample_preds[:, 1:, :, :] = (
+                sample_preds[:, 1:, :, :] * mask_indicator[:, :, None, None]
+            )
 
         return sample_images, sample_masks, sample_preds
 
