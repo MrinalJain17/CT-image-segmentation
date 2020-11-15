@@ -6,31 +6,6 @@ from albumentations.core.transforms_interface import ImageOnlyTransform
 WINDOWING_CONFIG = {"brain": (80, 40), "soft_tissue": (350, 20), "bone": (2800, 600)}
 
 
-class WindowingBase(ImageOnlyTransform):
-    """TODO
-
-    """
-
-    def __init__(
-        self,
-        window_width: int,
-        window_level: int,
-        shift: bool = True,
-        always_apply: bool = False,
-        p: float = 1.0,
-    ) -> None:
-        super(WindowingBase, self).__init__(always_apply, p)
-        self.window_width = window_width
-        self.window_level = window_level
-        self.shift = shift
-
-    def apply(self, image: np.ndarray, **params) -> np.ndarray:
-        return apply_window(image, self.window_width, self.window_level, self.shift)
-
-    def get_transform_init_args_names(self) -> Tuple:
-        return ("window_width", "window_level")
-
-
 class WindowedChannels(ImageOnlyTransform):
     """TODO
 
@@ -62,6 +37,31 @@ class WindowedChannels(ImageOnlyTransform):
 
     def get_transform_init_args_names(self) -> List:
         return []
+
+
+class WindowingBase(ImageOnlyTransform):
+    """TODO
+
+    """
+
+    def __init__(
+        self,
+        window_width: int,
+        window_level: int,
+        shift: bool = True,
+        always_apply: bool = False,
+        p: float = 1.0,
+    ) -> None:
+        super(WindowingBase, self).__init__(always_apply, p)
+        self.window_width = window_width
+        self.window_level = window_level
+        self.shift = shift
+
+    def apply(self, image: np.ndarray, **params) -> np.ndarray:
+        return apply_window(image, self.window_width, self.window_level, self.shift)
+
+    def get_transform_init_args_names(self) -> Tuple:
+        return ("window_width", "window_level")
 
 
 class BrainWindowing(WindowingBase):

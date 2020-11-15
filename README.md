@@ -30,6 +30,8 @@ Executing the following code will download, extract, and split the dataset.
 
 ## Requirements
 
+### Base Requirements
+
 1. Python (3.7)
 2. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
 3. Tqdm - For displaying progress bars
@@ -38,4 +40,7 @@ Executing the following code will download, extract, and split the dataset.
 6. [Albumentations](https://github.com/albumentations-team/albumentations) (0.5) - For data augmentation and transforms
 7. [MONAI](https://github.com/Project-MONAI/MONAI) (0.3) - For domain specific models, losses, metrics, etc
 8. [PyTorch-Lightning](https://github.com/PyTorchLightning/pytorch-lightning) (1.0)
-9. [Weights and Biases](https://github.com/wandb/client) - For keeping track of experiments
+
+### Additional Requirements
+
+1. [Weights and Biases](https://github.com/wandb/client) - For keeping track of experiments
