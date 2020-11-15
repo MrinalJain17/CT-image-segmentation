@@ -92,7 +92,9 @@ class BaseUNet2D(pl.LightningModule):
         prefix = "train" if is_training else "val"
 
         prediction = self.forward(images)
-        loss_dict = self.loss_func(input=prediction, target=masks)
+        loss_dict = self.loss_func(
+            input=prediction, target=masks, mask_indicator=mask_indicator
+        )
         total_loss = torch.stack(list(loss_dict.values())).sum()
 
         for name, loss_value in loss_dict.items():
