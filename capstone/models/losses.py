@@ -1,12 +1,9 @@
-from functools import partial
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from capstone.models.metrics import compute_meandice, do_metric_reduction
-from capstone.utils import miccai
 from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
-from monai.transforms import AsDiscrete
+from monai.losses.focal_loss import FocalLoss
+from monai.losses.tversky import TverskyLoss
 
 WEIGHT = {
     "Background": 1e-10,
@@ -37,6 +34,9 @@ class BaseLossWrapper(nn.Module):
         return self.loss_fx(input, target)
 
     def _process(self, input, target):
+        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
+        target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+
         return (input, target)
 
 
@@ -49,6 +49,9 @@ class CrossEntropyWrapper(BaseLossWrapper):
     @property
     def loss_fx(self):
         return F.cross_entropy
+
+    def _process(self, input, target):
+        return (input, target)
 
 
 class WeightedCrossEntropyWrapper(CrossEntropyWrapper):
@@ -73,12 +76,6 @@ class DiceLossWrapper(BaseLossWrapper):
     def loss_fx(self):
         return DiceLoss(include_background=False, to_onehot_y=True, softmax=True)
 
-    def _process(self, input, target):
-        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
-        target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
-
-        return (input, target)
-
 
 class GeneralizedDiceLossWrapper(BaseLossWrapper):
     """TODO"""
@@ -92,37 +89,33 @@ class GeneralizedDiceLossWrapper(BaseLossWrapper):
             include_background=False, to_onehot_y=True, softmax=True
         )
 
-    def _process(self, input, target):
-        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
-        target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
 
-        return (input, target)
-
-
-class DiceMetricWrapper(object):
+class FocalLossWrapper(BaseLossWrapper):
     """TODO"""
 
     def __init__(self):
-        self.metric_fx = partial(compute_meandice, include_background=False)
-        self.n_classes = len(miccai.STRUCTURES) + 1  # Additional background
+        super(FocalLossWrapper, self).__init__()
 
-    def __call__(self, input, target):
-        input, target = self._process(input, target)
-        score = self.metric_fx(input, target)  # Shape: (N, C)
+    @property
+    def loss_fx(self):
+        return FocalLoss()
 
-        dice_per_class = do_metric_reduction(score, "mean_batch")[0]
-        dice_mean = dice_per_class.mean()
-        return dice_mean, dice_per_class
 
-    def _process(self, input, target):
-        assert input.ndim == 3, "Expected input of shape: (N, H, W)"
-        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
+class TverskyLossWrapper(BaseLossWrapper):
+    """TODO"""
 
-        input = input.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
-        target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+    def __init__(self):
+        super(TverskyLossWrapper, self).__init__()
 
-        expand = AsDiscrete(to_onehot=True, n_classes=self.n_classes)
-        return expand(input), expand(target)  # Shape: (N, C, H, W) - binarized
+    @property
+    def loss_fx(self):
+        return TverskyLoss(
+            include_background=False,
+            to_onehot_y=True,
+            softmax=True,
+            alpha=0.25,  # Weight of false positives (precision)
+            beta=0.75,  # Weight of false negatives  (recall)
+        )
 
 
 LOSSES = {
@@ -130,6 +123,8 @@ LOSSES = {
     "Dice": DiceLossWrapper(),
     "GeneralizedDice": GeneralizedDiceLossWrapper(),
     "WeightedCrossEntropy": WeightedCrossEntropyWrapper(),
+    "Focal": FocalLossWrapper(),
+    "Tversky": TverskyLossWrapper(),
 }
 
 
