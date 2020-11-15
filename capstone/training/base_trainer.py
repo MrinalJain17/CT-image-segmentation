@@ -25,6 +25,7 @@ class BaseUNet2D(pl.LightningModule):
         downsample: bool = False,
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
+        exclude_missing: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -40,10 +41,13 @@ class BaseUNet2D(pl.LightningModule):
             "downsample",
             "lr",
             "loss_fx",
+            "exclude_missing",
         )
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.unet = self._construct_model()
-        self.loss_func = MultipleLossWrapper(losses=loss_fx)
+        self.loss_func = MultipleLossWrapper(
+            losses=loss_fx, exclude_missing=exclude_missing
+        )
         self.dice_score = DiceMetricWrapper()
 
     @property
@@ -157,6 +161,12 @@ class BaseUNet2D(pl.LightningModule):
             type=str,
             default="CrossEntropy",
             help="Loss function",
+        )
+        parser.add_argument(
+            "--exclude_missing",
+            action="store_true",
+            default=False,
+            help="Exclude missing annotations from loss computation as described in AnatomyNet",
         )
         return parser
 

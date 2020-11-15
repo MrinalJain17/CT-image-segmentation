@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from monai.losses.dice import DiceLoss, GeneralizedDiceLoss
+from capstone.models.temp import GeneralizedDiceLoss
+from capstone.utils import miccai
+from monai.losses.dice import DiceLoss
 from monai.losses.focal_loss import FocalLoss
-from monai.losses.tversky import TverskyLoss
+from monai.transforms import AsDiscrete
 
 WEIGHT = {
     "Background": 1e-10,
@@ -43,7 +45,7 @@ class BaseLossWrapper(nn.Module):
 class CrossEntropyWrapper(BaseLossWrapper):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(CrossEntropyWrapper, self).__init__()
 
     @property
@@ -57,7 +59,7 @@ class CrossEntropyWrapper(BaseLossWrapper):
 class WeightedCrossEntropyWrapper(CrossEntropyWrapper):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(WeightedCrossEntropyWrapper, self).__init__()
         self.weight = torch.as_tensor(list(WEIGHT.values()))
 
@@ -69,72 +71,109 @@ class WeightedCrossEntropyWrapper(CrossEntropyWrapper):
 class DiceLossWrapper(BaseLossWrapper):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, reduction="mean"):
         super(DiceLossWrapper, self).__init__()
+        self.reduction = reduction
 
     @property
     def loss_fx(self):
-        return DiceLoss(include_background=False, to_onehot_y=True, softmax=True)
+        return DiceLoss(
+            include_background=False,
+            to_onehot_y=True,
+            softmax=True,
+            reduction=self.reduction,
+        )
 
 
 class GeneralizedDiceLossWrapper(BaseLossWrapper):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, reduction="mean"):
         super(GeneralizedDiceLossWrapper, self).__init__()
+        self.reduction = reduction
 
     @property
     def loss_fx(self):
         return GeneralizedDiceLoss(
-            include_background=False, to_onehot_y=True, softmax=True
+            include_background=False,
+            to_onehot_y=True,
+            softmax=True,
+            reduction=self.reduction,
         )
 
 
 class FocalLossWrapper(BaseLossWrapper):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, reduction="mean"):
         super(FocalLossWrapper, self).__init__()
+        self.reduction = reduction
+        self.n_classes = len(miccai.STRUCTURES) + 1  # Additional background
 
     @property
     def loss_fx(self):
-        return FocalLoss()
+        return FocalLoss(reduction=self.reduction)
 
+    def _process(self, input, target):
+        assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"
+        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
 
-class TverskyLossWrapper(BaseLossWrapper):
-    """TODO"""
+        expand = AsDiscrete(to_onehot=True, n_classes=self.n_classes)
+        target = expand(target.unsqueeze(dim=1))  # Shape: (N, C, H, W)
 
-    def __init__(self):
-        super(TverskyLossWrapper, self).__init__()
-
-    @property
-    def loss_fx(self):
-        return TverskyLoss(
-            include_background=False,
-            to_onehot_y=True,
-            softmax=True,
-            alpha=0.25,  # Weight of false positives (precision)
-            beta=0.75,  # Weight of false negatives  (recall)
-        )
+        return (input, target)
 
 
 LOSSES = {
-    "CrossEntropy": CrossEntropyWrapper(),
-    "Dice": DiceLossWrapper(),
-    "GeneralizedDice": GeneralizedDiceLossWrapper(),
-    "WeightedCrossEntropy": WeightedCrossEntropyWrapper(),
-    "Focal": FocalLossWrapper(),
-    "Tversky": TverskyLossWrapper(),
+    "CrossEntropy": CrossEntropyWrapper,
+    "WeightedCrossEntropy": WeightedCrossEntropyWrapper,
+    "Focal": FocalLossWrapper,
+    "Dice": DiceLossWrapper,
+    "GeneralizedDice": GeneralizedDiceLossWrapper,
 }
 
 
 class MultipleLossWrapper(nn.Module):
-    def __init__(self, losses):
+    def __init__(self, losses, exclude_missing=False):
         super(MultipleLossWrapper, self).__init__()
+        self.exclude_missing = exclude_missing
         for name in losses:
             assert name in LOSSES.keys()
-        self.losses = nn.ModuleDict({name: LOSSES[name] for name in losses})
 
-    def forward(self, input, target):
-        values = {name: fx(input, target) for (name, fx) in self.losses.items()}
+        reduction = "none" if self.exclude_missing else "mean"
+        self.losses = nn.ModuleDict(
+            {name: LOSSES[name](reduction=reduction) for name in losses}
+        )
+
+    def forward(self, input, target, mask_indicator=None):
+        values = {}
+        if mask_indicator is not None:
+            mask_indicator = mask_indicator.type_as(input)
+
+        for (name, fx) in self.losses.items():
+            loss = fx(input, target)  # Either scalar or (N, C)
+
+            if self.exclude_missing and (
+                name not in ["CrossEntropy", "WeightedCrossEntropy"]
+            ):
+                loss = apply_missing_mask(name, loss, mask_indicator)
+
+            values[name] = loss
+
         return values
+
+
+def apply_missing_mask(name, loss, mask_indicator):
+    if name == "Focal":  # Creating mask as described in AnatomyNet
+        n_classes = len(miccai.STRUCTURES) + 1
+        temp = torch.zeros((loss.shape[0], n_classes)).type_as(loss)
+        temp[:, 1:] = mask_indicator
+        temp[:, 0] = (mask_indicator.sum(dim=1) == (n_classes - 1)).float()
+        mask_indicator = temp
+
+    # Weighing by number of annotations per class
+    weights = 1 / mask_indicator.sum(dim=0)
+    weights = weights / weights.sum()
+
+    loss = torch.einsum("ij,j,ij->ij", loss, weights, mask_indicator)
+    return loss.sum(dim=1).mean()
