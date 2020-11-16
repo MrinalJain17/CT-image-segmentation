@@ -172,7 +172,9 @@ def apply_missing_mask(name, loss, mask_indicator):
         mask_indicator = torch.cat([background_mask, mask_indicator], dim=1)
 
     # Weighing by number of annotations per class
-    weights = 1 / mask_indicator.sum(dim=0)
+    weights = 1.0 / mask_indicator.sum(dim=0)
+    if torch.any(torch.isinf(weights)):
+        weights = torch.ones_like(weights, device=weights.device)
     weights = weights / weights.sum()
 
     loss = torch.einsum("ij,j,ij->ij", loss, weights, mask_indicator)
