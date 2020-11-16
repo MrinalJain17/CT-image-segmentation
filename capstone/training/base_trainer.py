@@ -108,15 +108,14 @@ class BaseUNet2D(pl.LightningModule):
         return images, masks, mask_indicator, prediction, total_loss
 
     def _log_dice_scores(self, prediction, masks, mask_indicator, prefix):
+        pred = prediction.clone()
         self.eval()
         with torch.no_grad():
             if self.hparams.exclude_missing:
                 # No indicator for background
-                prediction[:, 1:, :, :] = (
-                    prediction[:, 1:, :, :] * mask_indicator[:, :, None, None]
-                )
-            prediction = _squash_predictions(prediction)  # Shape: (N, H, W)
-            dice_mean, dice_per_class = self.dice_score(prediction, masks)
+                pred[:, 1:, :, :] = pred[:, 1:, :, :] * mask_indicator[:, :, None, None]
+            pred = _squash_predictions(pred)  # Shape: (N, H, W)
+            dice_mean, dice_per_class = self.dice_score(pred, masks)
             for structure, score in zip(miccai.STRUCTURES, dice_per_class):
                 self.log(
                     f"{structure} Dice ({prefix})", score, on_step=False, on_epoch=True,
