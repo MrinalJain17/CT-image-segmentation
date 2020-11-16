@@ -165,12 +165,11 @@ class MultipleLossWrapper(nn.Module):
 
 def apply_missing_mask(name, loss, mask_indicator):
     if name == "Focal":  # Creating mask as described in AnatomyNet
-        with torch.no_grad():
-            n_classes = len(miccai.STRUCTURES) + 1
-            temp = torch.zeros((loss.shape[0], n_classes)).type_as(loss)
-            temp[:, 1:] = mask_indicator
-            temp[:, 0] = (mask_indicator.sum(dim=1) == (n_classes - 1)).float()
-            mask_indicator = temp
+        n_classes = len(miccai.STRUCTURES) + 1
+        background_mask = (
+            mask_indicator.sum(dim=1, keepdim=True) == (n_classes - 1)
+        ).float()
+        mask_indicator = torch.cat([background_mask, mask_indicator], dim=1)
 
     # Weighing by number of annotations per class
     weights = 1 / mask_indicator.sum(dim=0)
