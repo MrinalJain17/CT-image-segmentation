@@ -10,7 +10,12 @@ def _squash_masks(masks, n_classes, device):
     _temp = torch.arange(1, n_classes, device=device)
     masks = (masks * _temp[None, :, None, None]).max(dim=1).values
     return masks
-
+    
+    
+def _squash_masks_3D(masks, n_classes, device):
+    _temp = torch.arange(1, n_classes, device=device)
+    masks = (masks * _temp[None, :, None, None, None]).max(dim=1).values
+    return masks
 
 def _squash_predictions(preds):
     return torch.softmax(preds, dim=1).argmax(dim=1)  # Shape: (N, H, W)
