@@ -21,9 +21,9 @@ class DiceMetricWrapper(object):
         return dice_mean, dice_per_class
 
     def _process(self, input, target):
-        #assert input.ndim == 3, "Expected input of shape: (N, H, W)"   #remove for now, consider making maybe 3D loss function
-        #assert target.ndim == 3, "Expected target of shape: (N, H, W)"
-        
+        assert input.ndim == 3, "Expected input of shape: (N, H, W)"
+        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
+
         input = input.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
         target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
 
