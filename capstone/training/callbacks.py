@@ -86,3 +86,11 @@ class ExamplesLoggingCallback(Callback):
         pl_module.logger.experiment.log(
             {f"{title}": vis_list}, step=pl_module.trainer.global_step
         )
+        
+class ExamplesLoggingCallback3D(Callback):
+    """Callback to upload sample predictions to W&B."""
+
+    def __init__(self, log_every_n_epochs=1, seed=None) -> None:
+        super().__init__()
+        self.log_every_n_epochs = log_every_n_epochs
+        self.rng = np.random.default_rng(seed=seed)

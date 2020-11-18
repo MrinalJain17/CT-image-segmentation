@@ -1,6 +1,7 @@
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 from capstone.transforms.transforms_2d import WindowedChannels
+from capstone.transforms.transforms_3d import Resize3D,ToTensorV3
 
 _stacked_window_stats = {"mean": (0.107, 0.135, 0.085), "std": (0.271, 0.267, 0.152)}
 _minimal_windowed_transform = A.Compose(
@@ -15,6 +16,26 @@ _minimal_windowed_transform = A.Compose(
         ToTensorV2(),
     ]
 )
+             
+windowed_degree_0 = {
+    "train":A.Compose(
+            [
+                Resize3D(),
+                ToTensorV3(),
+            ]
+        ),
+    "test":A.Compose(
+            [
+                Resize3D(),
+                ToTensorV3(),
+            ]
+        )
+    }
+
+#windowed_degree_0 = {
+#    "train": None,
+#    "test":None
+#}
 
 windowed_degree_1 = {
     "train": _minimal_windowed_transform,

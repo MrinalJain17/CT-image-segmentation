@@ -42,7 +42,7 @@ LANDMARK_COLS: List[str] = [
 
 
 class Volume(object):
-    def __init__(self, path: str = None, data: Union[np.ndarray, torch.Tensor] = None):
+    def __init__(self, path: str = None, data: Union[np.ndarray, torch.Tensor] = None):        
         if path is not None:
             self._path = path
             self._data, self._headers = load_nrrd_as_tensor(path)
@@ -168,7 +168,7 @@ class Patient(object):
             "landmarks": None,
         }
         directory = Path(self.patient_dir)
-
+        
         meta_data["image"] = (directory / "img.nrrd").as_posix()
         try:
             meta_data["landmarks"] = (list(directory.glob("*.fcsv"))[0]).as_posix()
@@ -187,7 +187,6 @@ class Patient(object):
                 temp[structure] = Volume(path)
             else:
                 temp[structure] = None
-
         return temp
 
     def crop_data(
@@ -292,5 +291,4 @@ def load_nrrd_as_tensor(path: str) -> torch.Tensor:
     if img.ndim == 3:  # grayscale, so adding channel=1
         img = img[:, :, :, np.newaxis]  # Shape: (H, W, D, C)
     tensor = torch.from_numpy(np.transpose(img, (3, 2, 0, 1)))  # Shape: (C, D, H, W)
-
     return (tensor, headers)

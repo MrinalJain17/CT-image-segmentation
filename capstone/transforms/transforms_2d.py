@@ -5,11 +5,7 @@ from albumentations.core.transforms_interface import ImageOnlyTransform
 
 WINDOWING_CONFIG = {"brain": (80, 40), "soft_tissue": (350, 20), "bone": (2800, 600)}
 
-
 class WindowedChannels(ImageOnlyTransform):
-    """TODO
-
-    """
 
     def __init__(
         self,
@@ -38,62 +34,6 @@ class WindowedChannels(ImageOnlyTransform):
     def get_transform_init_args_names(self) -> List:
         return []
 
-
-class WindowingBase(ImageOnlyTransform):
-    """TODO
-
-    """
-
-    def __init__(
-        self,
-        window_width: int,
-        window_level: int,
-        shift: bool = True,
-        always_apply: bool = False,
-        p: float = 1.0,
-    ) -> None:
-        super(WindowingBase, self).__init__(always_apply, p)
-        self.window_width = window_width
-        self.window_level = window_level
-        self.shift = shift
-
-    def apply(self, image: np.ndarray, **params) -> np.ndarray:
-        return apply_window(image, self.window_width, self.window_level, self.shift)
-
-    def get_transform_init_args_names(self) -> Tuple:
-        return ("window_width", "window_level")
-
-
-class BrainWindowing(WindowingBase):
-    def __init__(
-        self, shift: bool = True, always_apply: bool = False, p: float = 1.0
-    ) -> None:
-        super(BrainWindowing, self).__init__(
-            *WINDOWING_CONFIG["brain"], shift=shift, always_apply=always_apply, p=p
-        )
-
-
-class SoftTissueWindowing(WindowingBase):
-    def __init__(
-        self, shift: bool = True, always_apply: bool = False, p: float = 1.0
-    ) -> None:
-        super(SoftTissueWindowing, self).__init__(
-            *WINDOWING_CONFIG["soft_tissue"],
-            shift=shift,
-            always_apply=always_apply,
-            p=p
-        )
-
-
-class BoneWindowing(WindowingBase):
-    def __init__(
-        self, shift: bool = True, always_apply: bool = False, p: float = 1.0
-    ) -> None:
-        super(BoneWindowing, self).__init__(
-            *WINDOWING_CONFIG["bone"], shift=shift, always_apply=always_apply, p=p
-        )
-
-
 def apply_window(
     image: np.ndarray, window_width: int, window_level: int, shift: bool = True
 ) -> np.ndarray:
@@ -105,3 +45,58 @@ def apply_window(
         clipped = (clipped - min_) / (max_ - min_ + 1e-8)
 
     return clipped
+
+# class WindowingBase(ImageOnlyTransform):
+    # """TODO
+
+    # """
+
+    # def __init__(
+        # self,
+        # window_width: int,
+        # window_level: int,
+        # shift: bool = True,
+        # always_apply: bool = False,
+        # p: float = 1.0,
+    # ) -> None:
+        # super(WindowingBase, self).__init__(always_apply, p)
+        # self.window_width = window_width
+        # self.window_level = window_level
+        # self.shift = shift
+
+    # def apply(self, image: np.ndarray, **params) -> np.ndarray:
+        # return apply_window(image, self.window_width, self.window_level, self.shift)
+
+    # def get_transform_init_args_names(self) -> Tuple:
+        # return ("window_width", "window_level")
+
+
+# class BrainWindowing(WindowingBase):
+    # def __init__(
+        # self, shift: bool = True, always_apply: bool = False, p: float = 1.0
+    # ) -> None:
+        # super(BrainWindowing, self).__init__(
+            # *WINDOWING_CONFIG["brain"], shift=shift, always_apply=always_apply, p=p
+        # )
+
+
+# class SoftTissueWindowing(WindowingBase):
+    # def __init__(
+        # self, shift: bool = True, always_apply: bool = False, p: float = 1.0
+    # ) -> None:
+        # super(SoftTissueWindowing, self).__init__(
+            # *WINDOWING_CONFIG["soft_tissue"],
+            # shift=shift,
+            # always_apply=always_apply,
+            # p=p
+        # )
+
+
+# class BoneWindowing(WindowingBase):
+    # def __init__(
+        # self, shift: bool = True, always_apply: bool = False, p: float = 1.0
+    # ) -> None:
+        # super(BoneWindowing, self).__init__(
+            # *WINDOWING_CONFIG["bone"], shift=shift, always_apply=always_apply, p=p
+        # )
+
