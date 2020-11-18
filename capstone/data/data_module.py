@@ -11,6 +11,7 @@ from capstone.transforms import predefined, predefined_3d
 from torch.utils.data import DataLoader
 
 DEGREE = {
+    0: predefined.degree_0,
     1: predefined.windowed_degree_1,
     2: predefined.windowed_degree_2,
     3: predefined.windowed_degree_3,
