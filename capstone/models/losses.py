@@ -36,8 +36,9 @@ class BaseLossWrapper(nn.Module):
         return self.loss_fx(input, target)
 
     def _process(self, input, target):
-        #assert target.ndim == 3, "Expected target of shape: (N, H, W)"
+        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
         target = target.unsqueeze(dim=1)  # Shape: (N, 1, H, W)
+
         return (input, target)
 
 
@@ -66,6 +67,7 @@ class WeightedCrossEntropyWrapper(CrossEntropyWrapper):
         input, target = self._process(input, target)
         return self.loss_fx(input, target, weight=self.weight.type_as(input))
 
+
 class DiceLossWrapper(BaseLossWrapper):
     """TODO"""
 
@@ -81,6 +83,8 @@ class DiceLossWrapper(BaseLossWrapper):
             softmax=True,
             reduction=self.reduction,
         )
+
+
 class GeneralizedDiceLossWrapper(BaseLossWrapper):
     """TODO"""
 
@@ -97,6 +101,7 @@ class GeneralizedDiceLossWrapper(BaseLossWrapper):
             reduction=self.reduction,
         )
 
+
 class FocalLossWrapper(BaseLossWrapper):
     """TODO"""
 
@@ -110,13 +115,14 @@ class FocalLossWrapper(BaseLossWrapper):
         return FocalLoss(reduction=self.reduction)
 
     def _process(self, input, target):
-        #assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"
-        #assert target.ndim == 3, "Expected target of shape: (N, H, W)"
+        assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"
+        assert target.ndim == 3, "Expected target of shape: (N, H, W)"
 
         expand = AsDiscrete(to_onehot=True, n_classes=self.n_classes)
         target = expand(target.unsqueeze(dim=1))  # Shape: (N, C, H, W)
 
         return (input, target)
+
 
 LOSSES = {
     "CrossEntropy": CrossEntropyWrapper,
@@ -138,14 +144,13 @@ class MultipleLossWrapper(nn.Module):
         self.losses = nn.ModuleDict(
             {name: LOSSES[name](reduction=reduction) for name in losses}
         )
-        
+
     def forward(self, input, target, mask_indicator=None):
         values = {}
         if mask_indicator is not None:
             mask_indicator = mask_indicator.type_as(input)
 
         for (name, fx) in self.losses.items():
-            
             loss = fx(input, target)  # Either scalar or (N, C)
 
             if self.exclude_missing and (
@@ -156,6 +161,7 @@ class MultipleLossWrapper(nn.Module):
             values[name] = loss
 
         return values
+
 
 def apply_missing_mask(name, loss, mask_indicator):
     if name == "Focal":  # Creating mask as described in AnatomyNet
