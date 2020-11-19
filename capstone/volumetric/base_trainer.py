@@ -4,18 +4,16 @@ from typing import List
 import pytorch_lightning as pl
 import torch
 import torch.optim as optim
-from capstone.data.data_module import MiccaiDataModule3D
 from capstone.models import UNet
-from capstone.models.losses_3d import MultipleLossWrapper3D
-from capstone.models.metrics_3d import DiceMetricWrapper3D
 from capstone.paths import DEFAULT_DATA_STORAGE
-from capstone.training.utils import _squash_masks_3D, _squash_predictions
+from capstone.training.base_trainer import WandbLoggerPatch
+from capstone.training.utils import _squash_predictions
 from capstone.utils import miccai
+from capstone.volumetric.data_module import MiccaiDataModule3D
+from capstone.volumetric.losses import MultipleLossWrapper3D
+from capstone.volumetric.metrics import DiceMetricWrapper3D
+from capstone.volumetric.utils import _squash_masks_3D
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.utilities import rank_zero_only
-
-# from capstone.training.callbacks import ExamplesLoggingCallback
 
 SEED = 12342
 
@@ -74,21 +72,17 @@ class BaseUNet3D(pl.LightningModule):
         )
 
     def forward(self, x):
-        if self.hparams.downsample:
-            x = self.conv1x1(x)
+        # if self.hparams.downsample:
+        #     x = self.conv1x1(x)
         x = self.unet(x)
         return x
 
     def training_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=True
-        )
+        _, _, _, _, loss = self._shared_step(batch, is_training=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=False
-        )
+        self._shared_step(batch, is_training=False)
 
     def _shared_step(self, batch, is_training: bool):
         # Image : Bx1xHxWxD (4x1x256x256x96 usually) #Masks : Bx9xHxWxD (1x9x256x256x96 usually)
@@ -123,7 +117,7 @@ class BaseUNet3D(pl.LightningModule):
         pred = prediction.clone()
         self.eval()
         with torch.no_grad():
-            # if self.hparams.exclude_missing:                  "<---Do later
+            # if self.hparams.exclude_missing:
             # No indicator for background
             #   pred[:, 1:, :, :] = pred[:, 1:, :, :] * mask_indicator[:, :, None, None]
             pred = _squash_predictions(pred)  # Shape: (N, H, W)
@@ -188,19 +182,6 @@ class BaseUNet3D(pl.LightningModule):
         return parser
 
 
-class WandbLoggerPatch(WandbLogger):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @rank_zero_only
-    def log_hyperparams(self, params):
-        params = self._convert_params(params)
-        params = self._flatten_dict(params)
-        params = self._sanitize_callable_params(params)
-        params = self._sanitize_params(params)
-        self.experiment.config.update(params, allow_val_change=True)
-
-
 def main(args):
     seed_everything(SEED)
     dict_args = vars(args)
@@ -249,6 +230,5 @@ if __name__ == "__main__":
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",
         )
-        # args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
 
     main(args)
