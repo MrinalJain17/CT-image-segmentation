@@ -22,6 +22,7 @@ class EnhancedUNet2D(BaseUNet2D):
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         exclude_missing: bool = False,
+        decay_loss_over_n_epochs: int = 200,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -29,14 +30,14 @@ class EnhancedUNet2D(BaseUNet2D):
         )
         self.compute_boundary_loss = BoundaryLoss()
         self.alpha = 1.0
+        self.loss_decay = 1.0 / decay_loss_over_n_epochs
 
     def on_train_epoch_end(self, *args, **kwargs):
         """
-        'self.alpha' is reduced by 0.005 every epoch. That is, the model will use
-        just the boundary loss after 200 epochs.
+        Here, 'alpha' is reduced by 'loss_decay' an the end of every epoch.
         """
         super().on_train_epoch_end(*args, **kwargs)
-        self.alpha = max(0.005, self.alpha - 0.005)
+        self.alpha = max(self.loss_decay, self.alpha - self.loss_decay)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator, dist_maps = batch
@@ -67,6 +68,20 @@ class EnhancedUNet2D(BaseUNet2D):
         self._log_dice_scores(prediction, masks, mask_indicator, prefix)
         return images, masks, mask_indicator, prediction, total_loss
 
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = BaseUNet2D.add_model_specific_args(parent_parser)
+        parser.add_argument(
+            "--decay_loss_over_n_epochs",
+            type=int,
+            default=200,
+            help=(
+                "Used to compute the decay factor for balancing the regional losses "
+                "with boundary loss over the course of training."
+            ),
+        )
+        return parser
+
 
 def main(args):
     seed_everything(SEED)
@@ -90,13 +105,13 @@ if __name__ == "__main__":
         "--use_wandb",
         action="store_true",
         default=False,
-        help="Use Weights & Biases for logging",
+        help="Use Weights & Biases for logging.",
     )
     parser.add_argument(
         "--experiment_name",
         type=str,
         default="Enhanced UNet 2D",
-        help="Experiment name for Weights & Biases",
+        help="Experiment name for Weights & Biases.",
     )
 
     parser = EnhancedUNet2D.add_model_specific_args(parser)
