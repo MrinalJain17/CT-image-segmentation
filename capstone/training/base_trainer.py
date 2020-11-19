@@ -21,7 +21,7 @@ SEED = 12342
 class BaseUNet2D(pl.LightningModule):
     def __init__(
         self,
-        filters: List = [16, 32, 64, 128, 256],
+        filters: List = [64, 128, 256, 512, 1024],
         use_res_units: bool = False,
         downsample: bool = False,
         lr: float = 1e-3,
@@ -84,15 +84,11 @@ class BaseUNet2D(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=True
-        )
+        _, _, _, _, loss = self._shared_step(batch, is_training=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=False
-        )
+        self._shared_step(batch, is_training=False)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
@@ -145,27 +141,32 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--transform_degree",
             type=int,
-            default=3,
-            help="The degree of transforms/data augmentation to be applied",
+            default=4,
+            help=(
+                "The degree of transforms/data augmentation to be applied. "
+                "Check 'predefined.py' for available transformations. Note that the "
+                "degree here does not represent the strength of transformations. "
+                "It's just a way to discern between multiple available options."
+            ),
         )
         parser.add_argument(
             "--filters",
             nargs=5,
             type=int,
             default=[64, 128, 256, 512, 1024],
-            help="A sqeuence of number of filters for the downsampling path in UNet",
+            help="A sqeuence of number of filters for the downsampling path in UNet.",
         )
         parser.add_argument(
             "--use_res_units",
             action="store_true",
             default=False,
-            help="For using residual units in UNet",
+            help="For using residual units in UNet.",
         )
         parser.add_argument(
             "--downsample",
             action="store_true",
             default=False,
-            help="For using a 1x1 convolution to downsample the input before UNet",
+            help="For using a 1x1 convolution to downsample the input before UNet.",
         )
         parser.add_argument(
             "--lr", type=float, default=1e-3, help="Learning rate",
@@ -181,7 +182,7 @@ class BaseUNet2D(pl.LightningModule):
             "--exclude_missing",
             action="store_true",
             default=False,
-            help="Exclude missing annotations from loss computation as described in AnatomyNet",
+            help="Exclude missing annotations from loss computation (as described in AnatomyNet).",
         )
         return parser
 
@@ -221,13 +222,13 @@ if __name__ == "__main__":
         "--use_wandb",
         action="store_true",
         default=False,
-        help="Use Weights & Biases for logging",
+        help="Use Weights & Biases for logging.",
     )
     parser.add_argument(
         "--experiment_name",
         type=str,
         default="UNet 2D",
-        help="Experiment name for Weights & Biases",
+        help="Experiment name for Weights & Biases.",
     )
 
     parser = BaseUNet2D.add_model_specific_args(parser)
