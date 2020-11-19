@@ -124,6 +124,33 @@ class FocalLossWrapper(BaseLossWrapper):
         return (input, target)
 
 
+class BoundaryLoss(nn.Module):
+    """
+    Boundary loss between pre-computed distance maps and predictions. Adapted from
+    the official repository: https://github.com/LIVIAETS/boundary-loss
+    """
+
+    def __init__(self):
+        super(BoundaryLoss, self).__init__()
+
+    def forward(self, input, dist_maps):
+        input, dist_maps = self._process(input, dist_maps)
+        loss = torch.einsum(
+            "bchw,bchw->bc", input[:, 1:, :, :], dist_maps
+        )  # Not using background for boundary loss
+
+        return loss.mean()
+
+    def _process(self, input, dist_maps):
+        assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"
+        assert dist_maps.ndim == 4, "Expected distance maps of shape: (N, C, H, W)"
+
+        input = torch.softmax(input, dim=1)
+        dist_maps = dist_maps.type_as(input)
+
+        return (input, dist_maps)
+
+
 LOSSES = {
     "CrossEntropy": CrossEntropyWrapper,
     "WeightedCrossEntropy": WeightedCrossEntropyWrapper,

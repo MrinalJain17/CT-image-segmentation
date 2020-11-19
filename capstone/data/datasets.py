@@ -11,6 +11,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
+from capstone.data.utils import compute_distance_map
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
 from torch.utils.data import Dataset
@@ -54,6 +55,20 @@ class MiccaiDataset2D(Dataset):
         return image, masks, mask_indicator
 
 
+class EnhancedMiccaiDataset2D(MiccaiDataset2D):
+    def __init__(self, path: str, transform=None):
+        super(EnhancedMiccaiDataset2D, self).__init__(path, transform)
+
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
+        image, masks, mask_indicator = super().__getitem__(index)
+        distance_maps = torch.from_numpy(compute_distance_map(masks.numpy()))
+
+        return image, masks, mask_indicator, distance_maps
+
+
 class MiccaiDataset3D(Dataset):
     def __init__(self, path: str, transform=None) -> None:
         self.path = Path(path).absolute()
@@ -94,11 +109,12 @@ class MiccaiDataset3D(Dataset):
         return image, masks, mask_indicator
 
 
-def get_miccai_2d(split: str = "train", transform=None) -> Dataset:
+def get_miccai_2d(split: str = "train", transform=None, enhanced=False) -> Dataset:
+    _dataset = EnhancedMiccaiDataset2D if enhanced else MiccaiDataset2D
     assert split in ["train", "valid", "test"], "Invalid data split passed"
     path = DEFAULT_DATA_STORAGE + f"/miccai_2d/{split}"
 
-    return MiccaiDataset2D(path, transform=transform)
+    return _dataset(path, transform=transform)
 
 
 def get_miccai_3d(split: str = "train", transform=None) -> Dataset:

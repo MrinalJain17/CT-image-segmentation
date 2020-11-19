@@ -22,24 +22,27 @@ DEGREE_3D = {0: predefined_3d.windowed_degree_0}
 
 
 class MiccaiDataModule2D(pl.LightningDataModule):
-    def __init__(self, batch_size, transform_degree: int = None, **kwargs):
+    def __init__(
+        self, batch_size, transform_degree: int = None, enhanced=False, **kwargs
+    ):
         super().__init__()
         self.batch_size = batch_size
         assert transform_degree in DEGREE.keys(), "Invalid transform degree passed"
         self.transform = DEGREE[transform_degree]
+        self.enhanced = enhanced
 
     def setup(self, stage: Optional[str]):
         if stage == "fit" or stage is None:
             self.train_dataset = get_miccai_2d(
-                split="train", transform=self.transform["train"],
+                split="train", transform=self.transform["train"], enhanced=self.enhanced
             )
             self.val_dataset = get_miccai_2d(
-                split="valid", transform=self.transform["test"],
+                split="valid", transform=self.transform["test"], enhanced=self.enhanced
             )
 
         if stage == "test" or stage is None:
             self.test_dataset = get_miccai_2d(
-                split="test", transform=self.transform["test"],
+                split="test", transform=self.transform["test"], enhanced=self.enhanced
             )
 
     def train_dataloader(self) -> DataLoader:

@@ -21,7 +21,7 @@ SEED = 12342
 class BaseUNet2D(pl.LightningModule):
     def __init__(
         self,
-        filters: List = [16, 32, 64, 128, 256],
+        filters: List = [64, 128, 256, 512, 1024],
         use_res_units: bool = False,
         downsample: bool = False,
         lr: float = 1e-3,
@@ -84,15 +84,11 @@ class BaseUNet2D(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=True
-        )
+        _, _, _, _, loss = self._shared_step(batch, is_training=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        images, masks, mask_indicator, prediction, loss = self._shared_step(
-            batch, is_training=False
-        )
+        self._shared_step(batch, is_training=False)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator = batch
@@ -145,7 +141,7 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--transform_degree",
             type=int,
-            default=3,
+            default=4,
             help="The degree of transforms/data augmentation to be applied",
         )
         parser.add_argument(
