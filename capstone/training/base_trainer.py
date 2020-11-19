@@ -31,6 +31,11 @@ class BaseUNet2D(pl.LightningModule):
     ) -> None:
         super().__init__()
 
+        assert isinstance(filters, list)
+        assert (
+            len(filters) == 5
+        ), "This module requires a standard 5 block UNet specification"
+
         assert isinstance(loss_fx, list), "This module expects a list of loss functions"
         loss_fx.sort()  # To have consistent order of loss functions
 
@@ -57,8 +62,10 @@ class BaseUNet2D(pl.LightningModule):
 
     def _construct_model(self):
         in_channels = (
-            1 if self.hparams.downsample else 3
-        )  # assuming transform_degree in [1, 2, 3, 4]
+            1
+            if (self.hparams.downsample or (self.hparams.transform_degree == 0))
+            else 3
+        )
         strides = [2, 2, 2, 2]  # Default for 5-layer UNet
 
         return UNet(
