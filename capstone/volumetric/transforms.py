@@ -1,10 +1,9 @@
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from albumentations.core.transforms_interface import DualTransform, ImageOnlyTransform
-from scipy.ndimage import zoom
+from albumentations.core.transforms_interface import DualTransform
 
 
 class Resize3D(DualTransform):
