@@ -1,7 +1,6 @@
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from capstone.transforms.transforms_2d import WindowedChannels
-from capstone.transforms.transforms_3d import Resize3D,ToTensorV3
+from capstone.transforms.transforms_2d import SoftTissueWindowing, WindowedChannels
 
 _stacked_window_stats = {"mean": (0.107, 0.135, 0.085), "std": (0.271, 0.267, 0.152)}
 _minimal_windowed_transform = A.Compose(
@@ -16,26 +15,18 @@ _minimal_windowed_transform = A.Compose(
         ToTensorV2(),
     ]
 )
-             
-windowed_degree_0 = {
-    "train":A.Compose(
-            [
-                Resize3D(),
-                ToTensorV3(),
-            ]
+_minimal_transform = A.Compose(
+    [
+        SoftTissueWindowing(),
+        A.Resize(256, 256),
+        A.Normalize(
+            mean=_stacked_window_stats["mean"][1],
+            std=_stacked_window_stats["std"][1],
+            max_pixel_value=1.0,
         ),
-    "test":A.Compose(
-            [
-                Resize3D(),
-                ToTensorV3(),
-            ]
-        )
-    }
-
-#windowed_degree_0 = {
-#    "train": None,
-#    "test":None
-#}
+        ToTensorV2(),
+    ]
+)
 
 windowed_degree_1 = {
     "train": _minimal_windowed_transform,
@@ -94,4 +85,21 @@ windowed_degree_4 = {
         ]
     ),
     "test": _minimal_windowed_transform,
+}
+
+degree_0 = {
+    "train": A.Compose(
+        [
+            SoftTissueWindowing(),
+            A.RandomCrop(256, 256),
+            A.OneOf([A.ElasticTransform(), A.GridDistortion()]),
+            A.Normalize(
+                mean=_stacked_window_stats["mean"][1],
+                std=_stacked_window_stats["std"][1],
+                max_pixel_value=1.0,
+            ),
+            ToTensorV2(),
+        ]
+    ),
+    "test": _minimal_transform,
 }
