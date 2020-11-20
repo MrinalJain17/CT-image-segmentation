@@ -41,7 +41,7 @@ class ExamplesLoggingCallback(Callback):
                 )
 
     def _make_predictions(self, batch, pl_module):
-        images, masks, mask_indicator = batch
+        images, masks, mask_indicator, *others = batch
         images = images.to(pl_module.device)
         masks = masks.to(pl_module.device)
         mask_indicator = mask_indicator.to(pl_module.device).type_as(images)

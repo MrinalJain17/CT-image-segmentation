@@ -28,16 +28,18 @@ class EnhancedUNet2D(BaseUNet2D):
         super().__init__(
             filters, use_res_units, downsample, lr, loss_fx, exclude_missing, **kwargs
         )
-
         self.save_hyperparameters("decay_loss_over_n_epochs")
-        self.logger.experiment.config.update(
-            {"decay_loss_over_n_epochs": decay_loss_over_n_epochs},
-            allow_val_change=True,
-        )
 
         self.compute_boundary_loss = BoundaryLoss()
         self.alpha = 1.0
         self.loss_decay = 1.0 / decay_loss_over_n_epochs
+
+    def on_fit_start(self, *args, **kwargs):
+        super().on_fit_start(*args, **kwargs)
+        self.logger.experiment.config.update(
+            {"decay_loss_over_n_epochs": self.hparams.decay_loss_over_n_epochs},
+            allow_val_change=True,
+        )
 
     def on_train_epoch_end(self, *args, **kwargs):
         """
