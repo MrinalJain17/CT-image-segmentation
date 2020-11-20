@@ -28,6 +28,13 @@ class EnhancedUNet2D(BaseUNet2D):
         super().__init__(
             filters, use_res_units, downsample, lr, loss_fx, exclude_missing, **kwargs
         )
+
+        self.save_hyperparameters("decay_loss_over_n_epochs")
+        self.logger.experiment.config.update(
+            {"decay_loss_over_n_epochs": decay_loss_over_n_epochs},
+            allow_val_change=True,
+        )
+
         self.compute_boundary_loss = BoundaryLoss()
         self.alpha = 1.0
         self.loss_decay = 1.0 / decay_loss_over_n_epochs
@@ -86,9 +93,10 @@ class EnhancedUNet2D(BaseUNet2D):
 def main(args):
     seed_everything(SEED)
     dict_args = vars(args)
+    dict_args["enhanced"] = True
 
     # Data
-    miccai_2d = MiccaiDataModule2D(**dict_args, enhanced=True)
+    miccai_2d = MiccaiDataModule2D(**dict_args)
 
     # Model
     model = EnhancedUNet2D(**dict_args)
