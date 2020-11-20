@@ -22,7 +22,7 @@ class EnhancedUNet2D(BaseUNet2D):
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         exclude_missing: bool = False,
-        decay_loss_over_n_epochs: int = 200,
+        decay_loss_over_n_epochs: int = 100,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -46,7 +46,9 @@ class EnhancedUNet2D(BaseUNet2D):
         Here, 'alpha' is reduced by 'loss_decay' an the end of every epoch.
         """
         super().on_train_epoch_end(*args, **kwargs)
-        self.alpha = max(self.loss_decay, self.alpha - self.loss_decay)
+        # Boundary loss starts after 100 epochs (hard-coded for now)
+        if self.current_epoch >= 99:
+            self.alpha = max(self.loss_decay, self.alpha - self.loss_decay)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator, dist_maps = batch
@@ -83,7 +85,7 @@ class EnhancedUNet2D(BaseUNet2D):
         parser.add_argument(
             "--decay_loss_over_n_epochs",
             type=int,
-            default=200,
+            default=100,
             help=(
                 "Used to compute the decay factor for balancing the regional losses "
                 "with boundary loss over the course of training."
