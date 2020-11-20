@@ -136,7 +136,7 @@ class BoundaryLoss(nn.Module):
     def forward(self, input, dist_maps):
         input, dist_maps = self._process(input, dist_maps)
         loss = torch.einsum(
-            "bchw,bchw->bc", input[:, 1:, :, :], dist_maps
+            "bchw,bchw->bchw", input[:, 1:, :, :], dist_maps
         )  # Not using background for boundary loss
 
         return loss.mean()
