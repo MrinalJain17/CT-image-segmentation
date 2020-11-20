@@ -75,6 +75,9 @@ class EnhancedUNet2D(BaseUNet2D):
         self.log(
             f"Boundary Loss ({prefix})", boundary_loss, on_step=False, on_epoch=True
         )
+        self.log(
+            "Alpha (regional loss weight)", self.alpha, on_step=False, on_epoch=True
+        )
 
         self._log_dice_scores(prediction, masks, mask_indicator, prefix)
         return images, masks, mask_indicator, prediction, total_loss
