@@ -46,9 +46,7 @@ class EnhancedUNet2D(BaseUNet2D):
         Here, 'alpha' is reduced by 'loss_decay' an the end of every epoch.
         """
         super().on_train_epoch_end(*args, **kwargs)
-        # Boundary loss starts after 100 epochs (hard-coded for now)
-        if self.current_epoch >= 99:
-            self.alpha = max(self.loss_decay, self.alpha - self.loss_decay)
+        self.alpha = max(self.loss_decay, self.alpha - self.loss_decay)
 
     def _shared_step(self, batch, is_training: bool):
         images, masks, mask_indicator, dist_maps = batch
