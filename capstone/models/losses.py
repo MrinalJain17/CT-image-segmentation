@@ -133,13 +133,13 @@ class BoundaryLoss(nn.Module):
     def __init__(self):
         super(BoundaryLoss, self).__init__()
 
-    def forward(self, input, dist_maps):
+    def forward(self, input, dist_maps, mask_indicator):
         input, dist_maps = self._process(input, dist_maps)
-        loss = torch.einsum(
-            "bchw,bchw->bchw", input[:, 1:, :, :], dist_maps
+        mask_indicator = mask_indicator.type_as(input)
+        loss = torch.einsum("bchw,bchw->bchw", input[:, 1:, :, :], dist_maps).mean(
+            dim=(2, 3)
         )  # Not using background for boundary loss
-
-        return loss.mean()
+        return apply_missing_mask("Boundary", loss, mask_indicator)
 
     def _process(self, input, dist_maps):
         assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"

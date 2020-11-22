@@ -63,7 +63,9 @@ class EnhancedUNet2D(BaseUNet2D):
         # Boundary loss as described in the following paper:
         # https://www.sciencedirect.com/science/article/pii/S1361841520302152?via%3Dihub
         # Note that 'self.alpha' is updated at the end of every epoch.
-        boundary_loss = self.compute_boundary_loss(prediction, dist_maps)
+        boundary_loss = self.compute_boundary_loss(
+            prediction, dist_maps, mask_indicator
+        )
         total_loss = (self.alpha * total_loss) + ((1 - self.alpha) * boundary_loss)
 
         for name, loss_value in loss_dict.items():
