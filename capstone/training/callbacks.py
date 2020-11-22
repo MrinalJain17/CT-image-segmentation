@@ -51,7 +51,13 @@ class ExamplesLoggingCallback(Callback):
         sample_images = images[self.sample_indices]
         sample_masks = masks[self.sample_indices]
         sample_mask_indicator = mask_indicator[self.sample_indices]
+        
         sample_preds = pl_module.forward(sample_images)
+        
+        #For case with segnetvae which returns a tuple (prediction + vae loss). We take only the predictions
+        if isinstance(sample_preds, tuple):
+            sample_preds = sample_preds[0]
+            
         if pl_module.hparams.exclude_missing:
             # No indicator for background
             sample_preds[:, 1:, :, :] = (
