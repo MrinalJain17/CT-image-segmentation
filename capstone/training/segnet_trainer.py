@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from capstone.data.data_module import MiccaiDataModule2D
-from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet, SegResNetVAE
+from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet, SegResNetVAE 
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.training.utils import _squash_masks, _squash_predictions
@@ -20,34 +20,41 @@ SEED = 12342
 class SegResNetVAE2D(pl.LightningModule):
     def __init__(
         self,
-        filters: List = [64, 128, 256, 512, 1024],
-        use_res_units: bool = False,
         downsample: bool = False,
         lr: float = 1e-3,
-        loss_fx: list = ["CrossEntropy"],
-        exclude_missing: bool = False,
+        loss_fx: list = ["Focal"],
+        exclude_missing: bool = True,
+        image_dimensions: tuple = (256,256),
+        blocks_down : list = [1,2,2,4],
+        blocks_up : list = [1,1,1],
+        init_filters: int = 8,
+        dropout_prob: float = None,
         **kwargs,
     ) -> None:
         super().__init__()
 
-        assert isinstance(filters, list)
-        assert (
-            len(filters) == 5
-        ), "This module requires a standard 5 block UNet specification"
-
         assert isinstance(loss_fx, list), "This module expects a list of loss functions"
         loss_fx.sort()  # To have consistent order of loss functions
-
         self.save_hyperparameters(
             "batch_size",
             "transform_degree",
-            "filters",
-            "use_res_units",
             "downsample",
             "lr",
             "loss_fx",
             "exclude_missing",
+            "blocks_down",
+            "blocks_up",
+            "init_filters",
+            "dropout_prob"
+             
         )
+        self.image_dimensions = image_dimensions
+        self.blocks_down = blocks_down
+        self.blocks_up = blocks_up
+        self.init_filters = init_filters
+        self.dropout_prob = dropout_prob
+        self.spatial_dimensions = 2
+        
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.segnet = self._construct_model()
         self.loss_func = MultipleLossWrapper(
@@ -65,13 +72,17 @@ class SegResNetVAE2D(pl.LightningModule):
             if (self.hparams.downsample or (self.hparams.transform_degree == 0))
             else 3
         )
-        strides = [2, 2, 2, 2]  # Default for 5-layer UNet
 
         return SegResNetVAE(
-            input_image_size = (256,256),
-            spatial_dims=2,
+            input_image_size = self.image_dimensions,
+            spatial_dims=self.spatial_dimensions,
             in_channels=in_channels,
             out_channels=self._n_classes,
+            blocks_down = self.blocks_down,
+            blocks_up = self.blocks_up,
+            init_filters = self.init_filters,
+            dropout_prob = self.dropout_prob
+            
         )
 
     def forward(self, x):
@@ -92,7 +103,9 @@ class SegResNetVAE2D(pl.LightningModule):
         masks = _squash_masks(masks, self._n_classes, self.device)
         mask_indicator = mask_indicator.type_as(images)
         prefix = "train" if is_training else "val"
+        
         prediction, vae_loss = self.forward(images)
+            
         loss_dict = self.loss_func(
             input=prediction, target=masks, mask_indicator=mask_indicator
         )
@@ -149,19 +162,6 @@ class SegResNetVAE2D(pl.LightningModule):
             ),
         )
         parser.add_argument(
-            "--filters",
-            nargs=5,
-            type=int,
-            default=[64, 128, 256, 512, 1024],
-            help="A sqeuence of number of filters for the downsampling path in UNet.",
-        )
-        parser.add_argument(
-            "--use_res_units",
-            action="store_true",
-            default=False,
-            help="For using residual units in UNet.",
-        )
-        parser.add_argument(
             "--downsample",
             action="store_true",
             default=False,
@@ -174,7 +174,7 @@ class SegResNetVAE2D(pl.LightningModule):
             "--loss_fx",
             nargs="+",
             type=str,
-            default="CrossEntropy",
+            default="Focal",
             help="Loss function",
         )
         parser.add_argument(
@@ -183,6 +183,32 @@ class SegResNetVAE2D(pl.LightningModule):
             default=False,
             help="Exclude missing annotations from loss computation (as described in AnatomyNet).",
         )
+        parser.add_argument(
+            "--blocks_down",
+            nargs=4,
+            default=[1,2,2,4],
+            type = int,
+            help="Number of down sample blocks in each layer.",
+        )
+        parser.add_argument(
+            "--blocks_up",
+            nargs=3,
+            type = int,
+            default=[1,1,1],
+            help="Number of up sample blocks in each layer.",
+        )  
+        parser.add_argument(
+            "--init_filters",
+            type = int,
+            default=8,
+            help="Number of output channels for initial convolution layer.",
+        )      
+        parser.add_argument(
+            "--dropout_prob",
+            type = float,
+            default=None,
+            help="Probability of an element to be zero-ed.",
+        )               
         return parser
 
 
