@@ -29,6 +29,7 @@ class SegResNetVAE2D(pl.LightningModule):
         blocks_up : list = [1,1,1],
         init_filters: int = 8,
         dropout_prob: float = None,
+        use_vae_loss: bool = True,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -45,7 +46,8 @@ class SegResNetVAE2D(pl.LightningModule):
             "blocks_down",
             "blocks_up",
             "init_filters",
-            "dropout_prob"
+            "dropout_prob",
+            "use_vae_loss",
              
         )
         self.image_dimensions = image_dimensions
@@ -54,6 +56,7 @@ class SegResNetVAE2D(pl.LightningModule):
         self.init_filters = init_filters
         self.dropout_prob = dropout_prob
         self.spatial_dimensions = 2
+        self.use_vae_loss = use_vae_loss
         
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=1, stride=1)
         self.segnet = self._construct_model()
@@ -112,7 +115,8 @@ class SegResNetVAE2D(pl.LightningModule):
         total_loss = torch.stack(list(loss_dict.values())).sum()
         
         if is_training:
-            total_loss += vae_loss
+            if self.use_vae_loss:
+                total_loss += vae_loss
             
         for name, loss_value in loss_dict.items():
             self.log(
@@ -208,7 +212,14 @@ class SegResNetVAE2D(pl.LightningModule):
             type = float,
             default=None,
             help="Probability of an element to be zero-ed.",
-        )               
+        )  
+
+        parser.add_argument(
+            "--use_vae_loss",
+            action="store_true",
+            default=False,
+            help="Use VAE loss in addition to prediction loss.",
+        )          
         return parser
 
 
