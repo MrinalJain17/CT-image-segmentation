@@ -23,4 +23,4 @@ def compute_distance_map(mask: np.ndarray) -> np.ndarray:
                 (distance(posmask) - 1) * posmask
             )
 
-    return result
+    return result / 255.0

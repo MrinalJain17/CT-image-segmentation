@@ -22,7 +22,7 @@ class EnhancedUNet2D(BaseUNet2D):
         lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         exclude_missing: bool = False,
-        decay_loss_over_n_epochs: int = 100,
+        decay_loss_over_n_epochs: int = 200,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -86,7 +86,7 @@ class EnhancedUNet2D(BaseUNet2D):
         parser.add_argument(
             "--decay_loss_over_n_epochs",
             type=int,
-            default=100,
+            default=200,
             help=(
                 "Used to compute the decay factor for balancing the regional losses "
                 "with boundary loss over the course of training."
