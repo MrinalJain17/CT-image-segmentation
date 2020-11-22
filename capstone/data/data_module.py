@@ -48,7 +48,7 @@ class MiccaiDataModule2D(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=0,
+            num_workers=cpu_count(),
             pin_memory=True,
         )
 
@@ -57,7 +57,7 @@ class MiccaiDataModule2D(pl.LightningDataModule):
             self.val_dataset,
             batch_size=self.batch_size,
             shuffle=False,
-            num_workers=0,
+            num_workers=cpu_count(),
             pin_memory=True,
         )
 
@@ -66,6 +66,6 @@ class MiccaiDataModule2D(pl.LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
-            num_workers=0,
+            num_workers=cpu_count(),
             pin_memory=True,
         )
