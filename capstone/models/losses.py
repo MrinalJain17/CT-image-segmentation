@@ -124,14 +124,17 @@ class FocalLossWrapper(BaseLossWrapper):
         return (input, target)
 
 
-class BoundaryLoss(nn.Module):
+class BoundaryLossWrapper(nn.Module):
     """
     Boundary loss between pre-computed distance maps and predictions. Adapted from
     the official repository: https://github.com/LIVIAETS/boundary-loss
     """
 
-    def __init__(self):
-        super(BoundaryLoss, self).__init__()
+    def __init__(self, reduction="mean"):
+        super(BoundaryLossWrapper, self).__init__()
+
+        assert reduction in ["none", "mean"]
+        self.reduction = reduction
 
     def forward(self, input, dist_maps):
         input, dist_maps = self._process(input, dist_maps)
@@ -139,7 +142,10 @@ class BoundaryLoss(nn.Module):
             "bchw,bchw->bchw", input[:, 1:, :, :], dist_maps
         )  # Not using background for boundary loss
 
-        return loss.mean()
+        if self.reduction == "none":
+            return loss.mean(dim=(2, 3))  # Shape: (N, C)
+
+        return loss.mean()  # Scalar
 
     def _process(self, input, dist_maps):
         assert input.ndim == 4, "Expected input of shape: (N, C, H, W)"
@@ -157,6 +163,7 @@ LOSSES = {
     "Focal": FocalLossWrapper,
     "Dice": DiceLossWrapper,
     "GeneralizedDice": GeneralizedDiceLossWrapper,
+    "Boundary": BoundaryLossWrapper,
 }
 
 
@@ -172,13 +179,19 @@ class MultipleLossWrapper(nn.Module):
             {name: LOSSES[name](reduction=reduction) for name in losses}
         )
 
-    def forward(self, input, target, mask_indicator=None):
+    def forward(self, input, target, mask_indicator=None, dist_maps=None):
         values = {}
         if mask_indicator is not None:
             mask_indicator = mask_indicator.type_as(input)
 
         for (name, fx) in self.losses.items():
-            loss = fx(input, target)  # Either scalar or (N, C)
+            if name == "Boundary":
+                assert (
+                    dist_maps is not None
+                ), "Distance maps are required for using boundary loss"
+                loss = fx(input, dist_maps)
+            else:
+                loss = fx(input, target)  # Either scalar or (N, C)
 
             if self.exclude_missing and (
                 name not in ["CrossEntropy", "WeightedCrossEntropy"]
