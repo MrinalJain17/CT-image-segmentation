@@ -91,17 +91,21 @@ class BaseUNet2D(pl.LightningModule):
         self._shared_step(batch, is_training=False)
 
     def _shared_step(self, batch, is_training: bool):
-        images, masks, mask_indicator = batch
+        images, masks, mask_indicator, *dist_maps = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
         mask_indicator = mask_indicator.type_as(images)
-        prefix = "train" if is_training else "val"
+        dist_maps = None if (len(dist_maps) == 0) else dist_maps[0]
 
         prediction = self.forward(images)
         loss_dict = self.loss_func(
-            input=prediction, target=masks, mask_indicator=mask_indicator
+            input=prediction,
+            target=masks,
+            mask_indicator=mask_indicator,
+            dist_maps=dist_maps,
         )
         total_loss = torch.stack(list(loss_dict.values())).sum()
 
+        prefix = "train" if is_training else "val"
         for name, loss_value in loss_dict.items():
             self.log(
                 f"{name} Loss ({prefix})", loss_value, on_step=False, on_epoch=True,
@@ -203,6 +207,9 @@ class WandbLoggerPatch(WandbLogger):
 def main(args):
     seed_everything(SEED)
     dict_args = vars(args)
+
+    if "Boundary" in args.loss_fx:
+        dict_args["enhanced"] = True
 
     # Data
     miccai_2d = MiccaiDataModule2D(**dict_args)
