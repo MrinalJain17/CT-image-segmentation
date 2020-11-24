@@ -66,7 +66,7 @@ class EnhancedUNet2D(BaseUNet2D):
         boundary_loss = self.compute_boundary_loss(
             prediction, dist_maps, mask_indicator
         )
-        total_loss = (self.alpha * total_loss) + ((1 - self.alpha) * boundary_loss)
+        total_loss = total_loss + ((1 - self.alpha) * boundary_loss)
 
         for name, loss_value in loss_dict.items():
             self.log(
