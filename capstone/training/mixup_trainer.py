@@ -34,7 +34,7 @@ class MixupUNet2D(BaseUNet2D):
         dist_maps = None if (len(dist_maps) == 0) else dist_maps[0]
 
         mixed_images, shuffle_index, lambda_ = mixup_data(
-            images, alpha=0.2, device=self.device
+            images, alpha=0.4, device=self.device
         )
 
         prediction = self.forward(mixed_images)
