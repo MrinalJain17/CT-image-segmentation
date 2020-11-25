@@ -33,7 +33,11 @@ def weighted_mixup(images, masks, alpha=0.2, device=None):
     probability = probability / probability.sum()  # Normalizing to sum to 1
 
     lambda_ = RNG.beta(alpha, alpha)
-    index = torch.multinomial(probability, batch_size, replacement=True).to(device)
+    index = torch.from_numpy(
+        RNG.choice(
+            batch_size, batch_size, replace=True, p=probability.detach().cpu().numpy()
+        )
+    ).to(device)
     mixed_images = mixup_tensors(images, images[index], lambda_)
 
     return mixed_images, index, lambda_
