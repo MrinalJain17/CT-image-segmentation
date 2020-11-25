@@ -74,7 +74,7 @@ class BaseUNet2D(pl.LightningModule):
             out_channels=self._n_classes,
             channels=self.hparams.filters,
             strides=strides,
-            num_res_units=(1 if self.hparams.use_res_units else 0),
+            num_res_units=(2 if self.hparams.use_res_units else 0),
         )
 
     def forward(self, x):

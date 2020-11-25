@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 
 import torch
 from capstone.data.data_module import MiccaiDataModule2D
+from capstone.models import UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.base_trainer import BaseUNet2D, WandbLoggerPatch
 from capstone.training.callbacks import ExamplesLoggingCallback
@@ -20,6 +21,24 @@ SEED = 12342
 class MixupUNet2D(BaseUNet2D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def _construct_model(self):
+        """1 residual unit works better for mixup."""
+        in_channels = (
+            1
+            if (self.hparams.downsample or (self.hparams.transform_degree == 0))
+            else 3
+        )
+        strides = [2, 2, 2, 2]  # Default for 5-layer UNet
+
+        return UNet(
+            dimensions=2,
+            in_channels=in_channels,
+            out_channels=self._n_classes,
+            channels=self.hparams.filters,
+            strides=strides,
+            num_res_units=(1 if self.hparams.use_res_units else 0),
+        )
 
     def validation_step(self, batch, batch_idx):
         """Mixup is used only while training and not during validation/testing."""
