@@ -26,6 +26,9 @@ def weighted_mixup(images, masks, alpha=0.2, device=None):
     count = ANNOTATION_COUNT.type_as(images)
     structure_indicator = ((masks == 1).sum(dim=(2, 3)) > 0).float()  # Shape: (N, C)
     structure_indicator = torch.einsum("ij,j->ij", structure_indicator, count)
+    structure_indicator[
+        structure_indicator.sum(dim=1) == 0
+    ] += ANNOTATION_COUNT.sum()  # To prevent NaNs (and not distort probabilities)
 
     probability = 1.0 / (
         structure_indicator.sum(dim=1) / (structure_indicator > 0).sum(dim=1)
@@ -33,11 +36,7 @@ def weighted_mixup(images, masks, alpha=0.2, device=None):
     probability = probability / probability.sum()  # Normalizing to sum to 1
 
     lambda_ = RNG.beta(alpha, alpha)
-    index = torch.from_numpy(
-        RNG.choice(
-            batch_size, batch_size, replace=True, p=probability.detach().cpu().numpy()
-        )
-    ).to(device)
+    index = torch.multinomial(probability, batch_size, replacement=True).to(device)
     mixed_images = mixup_tensors(images, images[index], lambda_)
 
     return mixed_images, index, lambda_
