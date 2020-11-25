@@ -8,8 +8,8 @@ from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.training.utils import (
     _squash_masks,
     _squash_predictions,
-    mixup_data,
     mixup_tensors,
+    weighted_mixup,
 )
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
@@ -30,12 +30,13 @@ class MixupUNet2D(BaseUNet2D):
         prefix = "train"
 
         images, masks, mask_indicator, *dist_maps = batch
+
+        mixed_images, shuffle_index, lambda_ = weighted_mixup(
+            images, masks, alpha=0.2, device=self.device
+        )
+
         masks = _squash_masks(masks, self._n_classes, self.device)
         dist_maps = None if (len(dist_maps) == 0) else dist_maps[0]
-
-        mixed_images, shuffle_index, lambda_ = mixup_data(
-            images, alpha=0.4, device=self.device
-        )
 
         prediction = self.forward(mixed_images)
         loss_dict_a = self.loss_func(
