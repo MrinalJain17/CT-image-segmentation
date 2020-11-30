@@ -12,6 +12,7 @@ from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.training.utils import _squash_masks, _squash_predictions
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
 
@@ -133,7 +134,16 @@ class BaseUNet2D(pl.LightningModule):
         self.train()
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.hparams.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="max", factor=0.5, threshold=0.01
+        )
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+            "monitor": "Mean Dice Score (val)",
+        }
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -249,12 +259,13 @@ if __name__ == "__main__":
     if args.default_root_dir is None:
         args.default_root_dir = DEFAULT_DATA_STORAGE
 
+    args.callbacks = [LearningRateMonitor(logging_interval="epoch")]
     if args.use_wandb:
         args.logger = WandbLoggerPatch(
             name=args.experiment_name,
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",
         )
-        args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
+        args.callbacks.append(ExamplesLoggingCallback(seed=SEED))
 
     main(args)
