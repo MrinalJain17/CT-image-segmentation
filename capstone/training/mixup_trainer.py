@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 import torch
-from capstone.data.data_module import MiccaiDataModule2D
+from capstone.data.data_module import FullMiccaiDataModule2D, MiccaiDataModule2D
 from capstone.models import UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.base_trainer import BaseUNet2D, WandbLoggerPatch
@@ -43,14 +43,12 @@ class MixupUNet2D(BaseUNet2D):
 
     def validation_step(self, batch, batch_idx):
         """Mixup is used only while training and not during validation/testing."""
-        super()._shared_step(batch, is_training=False)
+        super()._shared_step(batch, prefix="val")
 
-    def _shared_step(self, batch, is_training: bool):
-        assert is_training, "Mixup can be used only while training"
-        prefix = "train"
+    def _shared_step(self, batch, prefix: str):
+        assert prefix == "train", "Mixup can be used only while training"
 
         images, masks, mask_indicator, *dist_maps = batch
-
         mixed_images, shuffle_index, lambda_ = weighted_mixup(
             images, masks, alpha=0.2, device=self.device
         )
@@ -134,14 +132,14 @@ def main(args):
         dict_args["enhanced"] = True
 
     # Data
-    miccai_2d = MiccaiDataModule2D(**dict_args)
+    data_module = FullMiccaiDataModule2D if args.use_full_data else MiccaiDataModule2D
+    miccai_2d = data_module(**dict_args)
 
     # Model
     model = MixupUNet2D(**dict_args)
 
     # Trainer
     trainer = Trainer.from_argparse_args(args)
-
     trainer.fit(model=model, datamodule=miccai_2d)
 
 

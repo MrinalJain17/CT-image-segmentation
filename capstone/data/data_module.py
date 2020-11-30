@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 import pytorch_lightning as pl
 from capstone.data.datasets import get_miccai_2d
 from capstone.transforms import predefined
-from torch.utils.data import DataLoader
+from torch.utils.data import ConcatDataset, DataLoader
 
 DEGREE = {
     0: predefined.degree_0,
@@ -66,6 +66,23 @@ class MiccaiDataModule2D(pl.LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
+            num_workers=cpu_count(),
+            pin_memory=True,
+        )
+
+
+class FullMiccaiDataModule2D(MiccaiDataModule2D):
+    def __init__(
+        self, batch_size, transform_degree: int = None, enhanced=False, **kwargs
+    ):
+        super().__init__(batch_size, transform_degree, enhanced, **kwargs)
+
+    def train_dataloader(self) -> DataLoader:
+        full_train_dataset = ConcatDataset([self.train_dataset, self.val_dataset])
+        return DataLoader(
+            full_train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
             num_workers=cpu_count(),
             pin_memory=True,
         )
