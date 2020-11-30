@@ -24,7 +24,7 @@ class BaseUNet2D(pl.LightningModule):
         filters: List = [64, 128, 256, 512, 1024],
         use_res_units: bool = False,
         downsample: bool = False,
-        lr: float = 1e-2,
+        lr: float = 1e-3,
         loss_fx: list = ["CrossEntropy"],
         exclude_missing: bool = False,
         **kwargs,
@@ -133,7 +133,7 @@ class BaseUNet2D(pl.LightningModule):
         self.train()
 
     def configure_optimizers(self):
-        return optim.Adagrad(self.parameters(), lr=self.hparams.lr)
+        return optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -173,7 +173,7 @@ class BaseUNet2D(pl.LightningModule):
             help="For using a 1x1 convolution to downsample the input before UNet.",
         )
         parser.add_argument(
-            "--lr", type=float, default=1e-2, help="Learning rate",
+            "--lr", type=float, default=1e-3, help="Learning rate",
         )
         parser.add_argument(
             "--loss_fx",
