@@ -26,7 +26,7 @@ class BaseUNet2D(pl.LightningModule):
         use_res_units: bool = False,
         downsample: bool = False,
         lr: float = 1e-3,
-        loss_fx: list = ["CrossEntropy"],
+        loss_fx: list = ["Focal", "Dice"],
         exclude_missing: bool = False,
         **kwargs,
     ) -> None:
@@ -56,9 +56,6 @@ class BaseUNet2D(pl.LightningModule):
             losses=loss_fx, exclude_missing=exclude_missing
         )
         self.dice_score = DiceMetricWrapper()
-
-        if isinstance(self.logger, WandbLogger):
-            self.logger.watch(self)
 
     @property
     def _n_classes(self):
@@ -175,7 +172,7 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--use_res_units",
             action="store_true",
-            default=True,
+            default=False,
             help="For using residual units in UNet.",
         )
         parser.add_argument(
@@ -197,7 +194,7 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--exclude_missing",
             action="store_true",
-            default=True,
+            default=False,
             help="Exclude missing annotations from loss computation (as described in AnatomyNet).",
         )
         parser.add_argument(

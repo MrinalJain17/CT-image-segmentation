@@ -33,7 +33,7 @@ Executing the following code will download, extract, and split the dataset.
 ### Base Requirements
 
 1. Python (3.7)
-2. [pynrrd](https://github.com/mhe/pynrrd) - For loading MICCAI data in `.nrrd` format
+2. [pynrrd](https://github.com/mhe/pynrrd) (0.4) - For loading MICCAI data in `.nrrd` format
 3. Tqdm - For displaying progress bars
 4. PyTorch (1.7)
 5. Torchvision (0.8)
