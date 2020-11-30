@@ -14,6 +14,7 @@ from capstone.training.utils import (
 )
 from capstone.utils import miccai
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 SEED = 12342
 
@@ -170,12 +171,13 @@ if __name__ == "__main__":
     if args.default_root_dir is None:
         args.default_root_dir = DEFAULT_DATA_STORAGE
 
+    args.callbacks = [LearningRateMonitor(logging_interval="epoch")]
     if args.use_wandb:
         args.logger = WandbLoggerPatch(
             name=args.experiment_name,
             save_dir=DEFAULT_DATA_STORAGE,
             project="ct-image-segmentation",
         )
-        args.callbacks = [ExamplesLoggingCallback(seed=SEED)]
+        args.callbacks.append(ExamplesLoggingCallback(seed=SEED))
 
     main(args)
