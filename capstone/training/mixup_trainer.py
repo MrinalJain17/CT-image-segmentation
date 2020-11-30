@@ -45,6 +45,10 @@ class MixupUNet2D(BaseUNet2D):
         """Mixup is used only while training and not during validation/testing."""
         super()._shared_step(batch, prefix="val")
 
+    def test_step(self, batch, batch_idx):
+        """Mixup is used only while training and not during validation/testing."""
+        super()._shared_step(batch, prefix="test")
+
     def _shared_step(self, batch, prefix: str):
         assert prefix == "train", "Mixup can be used only while training"
 
@@ -141,6 +145,10 @@ def main(args):
     # Trainer
     trainer = Trainer.from_argparse_args(args)
     trainer.fit(model=model, datamodule=miccai_2d)
+
+    # Test
+    if args.use_full_data:
+        trainer.test(model=model, datamodule=miccai_2d)
 
 
 if __name__ == "__main__":
