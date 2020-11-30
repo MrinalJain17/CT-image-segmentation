@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from capstone.data.data_module import MiccaiDataModule2D
+from capstone.data.data_module import FullMiccaiDataModule2D, MiccaiDataModule2D
 from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
@@ -57,6 +57,9 @@ class BaseUNet2D(pl.LightningModule):
         )
         self.dice_score = DiceMetricWrapper()
 
+        if isinstance(self.logger, WandbLogger):
+            self.logger.watch(self)
+
     @property
     def _n_classes(self):
         return len(miccai.STRUCTURES) + 1  # Additional background
@@ -85,13 +88,13 @@ class BaseUNet2D(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        _, _, _, _, loss = self._shared_step(batch, is_training=True)
+        _, _, _, _, loss = self._shared_step(batch, prefix="train")
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self._shared_step(batch, is_training=False)
+        self._shared_step(batch, prefix="val")
 
-    def _shared_step(self, batch, is_training: bool):
+    def _shared_step(self, batch, prefix: str):
         images, masks, mask_indicator, *dist_maps = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
         mask_indicator = mask_indicator.type_as(images)
@@ -106,7 +109,6 @@ class BaseUNet2D(pl.LightningModule):
         )
         total_loss = torch.stack(list(loss_dict.values())).sum()
 
-        prefix = "train" if is_training else "val"
         for name, loss_value in loss_dict.items():
             self.log(
                 f"{name} Loss ({prefix})", loss_value, on_step=False, on_epoch=True,
@@ -150,12 +152,12 @@ class BaseUNet2D(pl.LightningModule):
         """The parameters specific to the model/data processing."""
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument(
-            "--batch_size", type=int, default=64, help="Batch size",
+            "--batch_size", type=int, default=128, help="Batch size",
         )
         parser.add_argument(
             "--transform_degree",
             type=int,
-            default=4,
+            default=0,
             help=(
                 "The degree of transforms/data augmentation to be applied. "
                 "Check 'predefined.py' for available transformations. Note that the "
@@ -173,7 +175,7 @@ class BaseUNet2D(pl.LightningModule):
         parser.add_argument(
             "--use_res_units",
             action="store_true",
-            default=False,
+            default=True,
             help="For using residual units in UNet.",
         )
         parser.add_argument(
@@ -189,14 +191,20 @@ class BaseUNet2D(pl.LightningModule):
             "--loss_fx",
             nargs="+",
             type=str,
-            default="CrossEntropy",
+            default=["Focal", "Dice"],
             help="Loss function",
         )
         parser.add_argument(
             "--exclude_missing",
             action="store_true",
-            default=False,
+            default=True,
             help="Exclude missing annotations from loss computation (as described in AnatomyNet).",
+        )
+        parser.add_argument(
+            "--use_full_data",
+            action="store_true",
+            default=False,
+            help="Train on the complete (train + validation) set",
         )
         return parser
 
@@ -222,14 +230,14 @@ def main(args):
         dict_args["enhanced"] = True
 
     # Data
-    miccai_2d = MiccaiDataModule2D(**dict_args)
+    data_module = FullMiccaiDataModule2D if args.use_full_data else MiccaiDataModule2D
+    miccai_2d = data_module(**dict_args)
 
     # Model
     model = BaseUNet2D(**dict_args)
 
     # Trainer
     trainer = Trainer.from_argparse_args(args)
-
     trainer.fit(model=model, datamodule=miccai_2d)
 
 
