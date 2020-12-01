@@ -146,9 +146,9 @@ def main(args):
     trainer = Trainer.from_argparse_args(args)
     trainer.fit(model=model, datamodule=miccai_2d)
 
-    # Test
+    # Save final model
     if args.use_full_data:
-        trainer.test(model=model, datamodule=miccai_2d)
+        trainer.save_checkpoint(f"{DEFAULT_DATA_STORAGE}/model_mixup.ckpt")
 
 
 if __name__ == "__main__":
