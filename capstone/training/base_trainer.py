@@ -243,6 +243,7 @@ def main(args):
     # Save final model
     if args.use_full_data:
         trainer.save_checkpoint(f"{DEFAULT_DATA_STORAGE}/model_large.ckpt")
+        trainer.test(model=model, datamodule=miccai_2d)
 
 
 if __name__ == "__main__":
