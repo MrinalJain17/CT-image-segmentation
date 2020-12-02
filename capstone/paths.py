@@ -43,3 +43,7 @@ def _storage_root() -> Path:
 
 REPOSITORY_ROOT: str = _repository_root().as_posix()
 DEFAULT_DATA_STORAGE: str = _storage_root().as_posix()
+TRAINED_MODELS: dict = {
+    "large": "https://github.com/MrinalJain17/CT-image-segmentation/releases/download/v1.0/model_large.ckpt",
+    "mixup": "https://github.com/MrinalJain17/CT-image-segmentation/releases/download/v1.0/model_mixup.ckpt",
+}

@@ -40,6 +40,23 @@ class ExamplesLoggingCallback(Callback):
                     "val_sample_predictions",
                 )
 
+    def on_test_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+    ):
+        num_test_batches = len(trainer.datamodule.test_dataloader())
+        if (batch_idx + 1) != num_test_batches:
+            with torch.no_grad():
+                sample_images, sample_masks, sample_preds = self._make_predictions(
+                    batch, pl_module
+                )
+                self._log_images(
+                    sample_images,
+                    sample_masks,
+                    sample_preds,
+                    pl_module,
+                    "test_sample_predictions",
+                )
+
     def _make_predictions(self, batch, pl_module):
         images, masks, mask_indicator, *others = batch
         images = images.to(pl_module.device)

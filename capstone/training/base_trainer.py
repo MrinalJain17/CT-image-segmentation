@@ -91,6 +91,9 @@ class BaseUNet2D(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         self._shared_step(batch, prefix="val")
 
+    def test_step(self, batch, batch_idx):
+        self._shared_step(batch, prefix="test")
+
     def _shared_step(self, batch, prefix: str):
         images, masks, mask_indicator, *dist_maps = batch
         masks = _squash_masks(masks, self._n_classes, self.device)
@@ -236,6 +239,11 @@ def main(args):
     # Trainer
     trainer = Trainer.from_argparse_args(args)
     trainer.fit(model=model, datamodule=miccai_2d)
+
+    # Save final model
+    if args.use_full_data:
+        trainer.save_checkpoint(f"{DEFAULT_DATA_STORAGE}/model_large.ckpt")
+        trainer.test(model=model, datamodule=miccai_2d)
 
 
 if __name__ == "__main__":
