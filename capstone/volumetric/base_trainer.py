@@ -1,9 +1,6 @@
 from argparse import ArgumentParser
 from typing import List
 
-import pytorch_lightning as pl
-import torch
-import torch.optim as optim
 from capstone.models import UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.base_trainer import WandbLoggerPatch
@@ -13,7 +10,10 @@ from capstone.volumetric.data_module import MiccaiDataModule3D
 from capstone.volumetric.losses import MultipleLossWrapper3D
 from capstone.volumetric.metrics import DiceMetricWrapper3D
 from capstone.volumetric.utils import _squash_masks_3D
-from pytorch_lightning import Trainer, seed_everything
+import pytorch_lightning as pl
+from pytorch_lightning import seed_everything, Trainer
+import torch
+import torch.optim as optim
 
 SEED = 12342
 

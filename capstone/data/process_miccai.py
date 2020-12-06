@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-import numpy as np
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
+import numpy as np
 
 
 def convert_to_2d(

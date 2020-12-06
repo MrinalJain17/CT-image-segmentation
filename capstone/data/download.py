@@ -25,12 +25,12 @@ Currently available datasets
 
 """
 
-import shutil
 from argparse import ArgumentParser
 from pathlib import Path
+import shutil
 
-import numpy as np
 from capstone.paths import DEFAULT_DATA_STORAGE
+import numpy as np
 from torchvision.datasets.utils import download_and_extract_archive
 
 SEED = 42

@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
-import numpy as np
 from albumentations.core.transforms_interface import ImageOnlyTransform
+import numpy as np
 
 WINDOWING_CONFIG = {"brain": (80, 40), "soft_tissue": (350, 20), "bone": (2800, 600)}
 

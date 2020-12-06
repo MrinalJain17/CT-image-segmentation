@@ -2,11 +2,11 @@ import functools
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple, Union
 
+from capstone.utils.utils import AttrDict
 import nrrd
 import numpy as np
 import pandas as pd
 import torch
-from capstone.utils.utils import AttrDict
 from torchvision.utils import make_grid
 from tqdm import tqdm
 

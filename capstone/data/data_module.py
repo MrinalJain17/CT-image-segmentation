@@ -5,9 +5,9 @@ The data modules here are required when working with pytorch lightning.
 from multiprocessing import cpu_count
 from typing import List, Optional, Union
 
-import pytorch_lightning as pl
 from capstone.data.datasets import get_miccai_2d
 from capstone.transforms import predefined
+import pytorch_lightning as pl
 from torch.utils.data import ConcatDataset, DataLoader
 
 DEGREE = {

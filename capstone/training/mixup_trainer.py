@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 
-import torch
 from capstone.data.data_module import FullMiccaiDataModule2D, MiccaiDataModule2D
 from capstone.models import UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
@@ -13,8 +12,9 @@ from capstone.training.utils import (
     weighted_mixup,
 )
 from capstone.utils import miccai
-from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
+import torch
 
 SEED = 12342
 

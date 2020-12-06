@@ -1,8 +1,8 @@
-import numpy as np
-import torch
 from capstone.training.utils import _squash_masks, _squash_predictions
 from capstone.utils import miccai
+import numpy as np
 from pytorch_lightning.callbacks import Callback
+import torch
 from wandb import Image
 
 

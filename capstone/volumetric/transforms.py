@@ -1,9 +1,9 @@
 from typing import List
 
+from albumentations.core.transforms_interface import DualTransform
 import numpy as np
 import torch
 import torch.nn.functional as F
-from albumentations.core.transforms_interface import DualTransform
 
 
 class Resize3D(DualTransform):

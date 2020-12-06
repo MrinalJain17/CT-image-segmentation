@@ -1,11 +1,11 @@
-import torch
-import torch.nn.functional as F
 from capstone.models.losses import BaseLossWrapper, MultipleLossWrapper
 from capstone.models.temp import GeneralizedDiceLoss
 from capstone.utils import miccai
 from monai.losses.dice import DiceLoss
 from monai.losses.focal_loss import FocalLoss
 from monai.transforms import AsDiscrete
+import torch
+import torch.nn.functional as F
 
 WEIGHT = {
     "Background": 1e-10,

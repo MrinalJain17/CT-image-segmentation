@@ -1,8 +1,8 @@
 from typing import List, Optional, Union
 
-import pytorch_lightning as pl
 from capstone.volumetric import predefined
 from capstone.volumetric.datasets import get_miccai_3d
+import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 DEGREE = {0: predefined.windowed_degree_0}

@@ -5,12 +5,12 @@ The code here is directly taken from the library MONAI
 Note: We've added the code locally because of some minor changes which the stable
 release of MONAI (at the time: v0.3) does not yet support.
 """
-import warnings
 from typing import Callable, Optional, Union
+import warnings
 
-import torch
 from monai.networks import one_hot
 from monai.utils import LossReduction, MetricReduction, Weight
+import torch
 from torch.nn.modules.loss import _Loss
 
 

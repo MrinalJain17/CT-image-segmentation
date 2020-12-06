@@ -1,20 +1,20 @@
 from argparse import ArgumentParser
 from typing import List
 
-import pytorch_lightning as pl
-import torch
-import torch.nn as nn
-import torch.optim as optim
 from capstone.data.data_module import FullMiccaiDataModule2D, MiccaiDataModule2D
 from capstone.models import DiceMetricWrapper, MultipleLossWrapper, UNet
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.training.callbacks import ExamplesLoggingCallback
 from capstone.training.utils import _squash_masks, _squash_predictions
 from capstone.utils import miccai
-from pytorch_lightning import Trainer, seed_everything
+import pytorch_lightning as pl
+from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 SEED = 12342
 

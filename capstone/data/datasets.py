@@ -9,11 +9,11 @@ which will automatically use the default storage location to load the data.
 from pathlib import Path
 from typing import Tuple
 
-import numpy as np
-import torch
 from capstone.data.utils import compute_distance_map
 from capstone.paths import DEFAULT_DATA_STORAGE
 from capstone.utils import miccai
+import numpy as np
+import torch
 from torch.utils.data import Dataset
 
 
