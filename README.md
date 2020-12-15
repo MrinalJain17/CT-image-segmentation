@@ -1,6 +1,4 @@
-# CT-image-segmentation
-
-Segmentation in Head and Neck CT images
+# Head and Neck CT Image Segmentation
 
 ## Installation
 
@@ -28,6 +26,8 @@ Executing the following code will download, extract, and split the dataset.
 
 ## Requirements
 
+*We highly recommend using the specified versions of the listed packages, with which our code is tested with.*
+
 ### Base Requirements
 
 1. Python (3.7)
@@ -41,4 +41,4 @@ Executing the following code will download, extract, and split the dataset.
 
 ### Additional Requirements
 
-1. [Weights and Biases](https://github.com/wandb/client) - For keeping track of experiments
+We use [Weights and Biases](https://github.com/wandb/client) for keeping a track of all our experiments and results.
