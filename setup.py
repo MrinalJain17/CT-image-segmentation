@@ -8,5 +8,5 @@ setup(
     author_email="mrinal.jain@nyu.edu",
     url="https://github.com/MrinalJain17/CT-image-segmentation",
     install_requires=[],
-    packages=find_packages(exclude=["storage"]),
+    packages=find_packages(exclude=["storage", "reports"]),
 )

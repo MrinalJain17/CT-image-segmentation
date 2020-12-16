@@ -2,9 +2,9 @@
 #                The following code is completely experimental
 #                ---------------------------------------------
 #
-# It is an attempt to use "GradCam" to visualize which pixels from the input
+# It is an attempt to use "GradCAM" to visualize which pixels from the input
 # are responsible for predicting a specific class. We use Captum
-# (https://github.com/pytorch/captum) for generating the GradCam attributions.
+# (https://github.com/pytorch/captum) for generating the GradCAM attributions.
 #
 ##############################################################################
 
